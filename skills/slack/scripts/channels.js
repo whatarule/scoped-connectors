@@ -33,7 +33,9 @@ async function main() {
   writeCache(channelMap);
 }
 
-main().catch((err) => {
-  process.stderr.write(`エラー: ${err.message}\n`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`エラー: ${err.message}\n`);
+    process.exit(1);
+  });
+}
