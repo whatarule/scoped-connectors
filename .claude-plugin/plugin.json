@@ -1,6 +1,6 @@
 {
   "name": "slack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Slack からメッセージを取得する Claude Code プラグイン",
   "author": { "name": "whatarule" },
   "repository": "https://github.com/whatarule/scoped-connectors",

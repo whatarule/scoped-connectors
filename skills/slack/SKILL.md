@@ -109,12 +109,65 @@ done
 
 ## history サブコマンド
 
-（未実装）
+指定チャンネルのメッセージ履歴を取得して表示します（デフォルト20件）。
+
+### 手順
+
+1. 引数からチャンネル名または ID を取得する
+2. チャンネル名の解決:
+   - `C` で始まる場合はそのまま ID として使用
+   - それ以外は `$SKILL_DIR/.cache/channels.json` を Read ツールで読み、チャンネル名から ID を特定
+   - キャッシュが存在しない、またはチャンネルが見つからない場合は「`/slack channels` でキャッシュを更新してください」と案内
+3. conversations.history API を呼び出す:
+
+```bash
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
+curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
+  "https://slack.com/api/conversations.history?channel=CHANNEL_ID&limit=20" \
+  | node "$SKILL_DIR/scripts/history.js"
+```
 
 ## thread サブコマンド
 
-（未実装）
+スレッドの返信メッセージを取得して表示します。
+
+### 引数の指定方法
+
+2つの方法でスレッドを指定できます:
+
+1. **チャンネル + ts**: `/slack thread #general 1234567890.123456`
+2. **Slack メッセージURL**: `/slack thread https://workspace.slack.com/archives/C01ABC/p1234567890123456`
+
+### 手順
+
+1. 引数を確認:
+   - `http` で始まる場合は Slack URL として扱い、URL から channelId と ts を抽出:
+     - `/archives/CHANNEL_ID/pTIMESTAMP` の形式からパース
+     - `p` の後の数字を先頭10桁 + `.` + 残りに変換して ts とする
+   - それ以外はチャンネル名/ID + ts の2引数として扱う
+2. チャンネル名の場合は history と同様にキャッシュでID変換
+3. conversations.replies API を呼び出す:
+
+```bash
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
+curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
+  "https://slack.com/api/conversations.replies?channel=CHANNEL_ID&ts=THREAD_TS" \
+  | node "$SKILL_DIR/scripts/thread.js"
+```
 
 ## search サブコマンド
 
-（未実装）
+メッセージをキーワード検索します。
+
+### 手順
+
+1. 引数から検索キーワードを取得する
+2. search.messages API を呼び出す（キーワードは URL エンコードする）:
+
+```bash
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
+ENCODED_QUERY=$(node -e "console.log(encodeURIComponent('KEYWORD'))")
+curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
+  "https://slack.com/api/search.messages?query=$ENCODED_QUERY" \
+  | node "$SKILL_DIR/scripts/search.js"
+```
