@@ -55,8 +55,7 @@ API レスポンスは node スクリプトにパイプして整形します。
 - 例: この SKILL.md が `/path/to/skills/slack/SKILL.md` にある場合、スクリプトは `/path/to/skills/slack/scripts/channels.js` です
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
-curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/..." | node "$SKILL_DIR/scripts/channels.js"
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/..." | node "$SKILL_DIR/scripts/channels.js"
 ```
 
 ## channels サブコマンド
@@ -121,10 +120,7 @@ done
 3. conversations.history API を呼び出す:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
-curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-  "https://slack.com/api/conversations.history?channel=CHANNEL_ID&limit=20" \
-  | node "$SKILL_DIR/scripts/history.js"
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/conversations.history?channel=CHANNEL_ID&limit=20" | node "$SKILL_DIR/scripts/history.js"
 ```
 
 ### 出力の注意
@@ -156,10 +152,7 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
 3. conversations.replies API を呼び出す:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
-curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-  "https://slack.com/api/conversations.replies?channel=CHANNEL_ID&ts=THREAD_TS" \
-  | node "$SKILL_DIR/scripts/thread.js"
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/conversations.replies?channel=CHANNEL_ID&ts=THREAD_TS" | node "$SKILL_DIR/scripts/thread.js"
 ```
 
 ### 出力の注意
@@ -176,11 +169,7 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
 2. search.messages API を呼び出す（キーワードは URL エンコードする）:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
-ENCODED_QUERY=$(node -e "console.log(encodeURIComponent('KEYWORD'))")
-curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-  "https://slack.com/api/search.messages?query=$ENCODED_QUERY" \
-  | node "$SKILL_DIR/scripts/search.js"
+SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && ENCODED_QUERY=$(node -e "console.log(encodeURIComponent('KEYWORD'))") && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/search.messages?query=$ENCODED_QUERY" | node "$SKILL_DIR/scripts/search.js"
 ```
 
 ### 出力の注意
