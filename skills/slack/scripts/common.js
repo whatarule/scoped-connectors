@@ -62,7 +62,9 @@ function formatMessage(msg) {
   const datetime = formatTs(msg.ts);
   const user = msg.user || msg.username || "unknown";
   const text = msg.text || "";
-  return `[${datetime}] (${msg.ts}) ${user}: ${text}`;
+  const total = (msg.reply_count || 0) + 1;
+  const thread = ` [${total}件のメッセージ]`;
+  return `[${datetime}] (${msg.ts}) ${user}: ${text}${thread}`;
 }
 
 module.exports = { readStdin, checkOk, formatTs, formatMessage };

@@ -127,6 +127,13 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
   | node "$SKILL_DIR/scripts/history.js"
 ```
 
+### 出力の注意
+
+結果をユーザーに表示する際、以下の情報を**必ず含めて**ください。省略しないでください。
+
+- **ts（タイムスタンプ）**: スレッド取得（`/slack thread`）で使う識別子
+- **メッセージ件数**（`[N件のメッセージ]`）: スレッドの規模を把握するための情報
+
 ## thread サブコマンド
 
 スレッドの返信メッセージを取得して表示します。
@@ -145,7 +152,7 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
      - `/archives/CHANNEL_ID/pTIMESTAMP` の形式からパース
      - `p` の後の数字を先頭10桁 + `.` + 残りに変換して ts とする
    - それ以外はチャンネル名/ID + ts の2引数として扱う
-2. チャンネル名の場合は history と同様にキャッシュでID変換
+2. チャンネル名の場合は history と同様にキャッシュでID変換（キャッシュがなければユーザーに確認の上 channels を実行）
 3. conversations.replies API を呼び出す:
 
 ```bash
@@ -175,3 +182,10 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
   "https://slack.com/api/search.messages?query=$ENCODED_QUERY" \
   | node "$SKILL_DIR/scripts/search.js"
 ```
+
+### 出力の注意
+
+結果をユーザーに表示する際、以下の情報を**必ず含めて**ください。省略しないでください。
+
+- **ts（タイムスタンプ）**: スレッド取得（`/slack thread`）で使う識別子
+- **チャンネル名**: どのチャンネルのメッセージかを示す情報
