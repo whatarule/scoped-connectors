@@ -13,7 +13,10 @@ function readStdin() {
     });
     process.stdin.on("end", () => {
       try {
-        resolve(JSON.parse(data));
+        // Slack API のレスポンスに含まれる制御文字を除去
+        // 改行・CRも含めてすべて除去（API レスポンスは単一行JSON）
+        const cleaned = data.replace(/[\x00-\x1F]/g, " ");
+        resolve(JSON.parse(cleaned));
       } catch (e) {
         reject(new Error(`JSON パースエラー: ${e.message}`));
       }
