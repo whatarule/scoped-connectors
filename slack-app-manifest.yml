@@ -1,0 +1,11 @@
+display_information:
+  name: Claude Slack Reader
+  description: Claude Code から Slack メッセージを読み取るためのアプリ（読み取り専用）
+oauth_config:
+  scopes:
+    user:
+      - channels:history
+      - channels:read
+      - search:read
+      - users:read
+      - usergroups:read
