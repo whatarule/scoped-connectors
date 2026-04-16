@@ -15,24 +15,26 @@
 3. **機能**: channels / history / thread / search の4サブコマンド
 4. **JSONパース**: Node.js（Claude Code に必ず入っている）
 5. **スクリプト**: モジュール分割（common + 機能別 + cache）
-6. **キャッシュ**: スキルディレクトリ内 `.cache/channels.json`、手動更新（`/slack channels` 実行時に更新）
+6. **キャッシュ**: スキルディレクトリ内 `.cache/channels.json` と `.cache/users.json`、手動更新（`/slack channels` 実行時にチャンネル、メッセージ取得時にユーザーを更新）
 7. **メッセージ取得件数**: デフォルト20件
 8. **チャンネル指定**: 名前でもIDでも可（`C` 始まりならID、それ以外は名前解決）
 9. **スレッド指定**: ts 直接指定 or Slack メッセージURL の両方対応
-10. **出力フォーマット**: コンパクト形式 `[日時] (ts) ユーザー: メッセージ`
+10. **出力フォーマット**: コンパクト形式 `[日時] (ts) ユーザー名: メッセージ`（ユーザーIDはキャッシュで名前に変換）
 11. **言語**: 日本語（）
 12. **allowed-tools**: Bash, Read, Agent
 13. **ページネーション**: `conversations.list` のみ対応（他は1ページ目のみ）
 14. **リトライ**: しない（レートリミット時はエラーメッセージを表示）
 15. **チャンネル種別**: `public_channel` 固定
 16. **App 設定配布**: manifest.yml をリポジトリに含める
+17. **スコープ**: `channels:history`, `channels:read`, `search:read`, `users:read`, `usergroups:read`
 
 ## リポジトリ構成
 
 ```
 slack/
 ├── .claude-plugin/
-│   └── plugin.json              # plugin manifest
+│   ├── plugin.json              # plugin manifest
+│   └── marketplace.json         # marketplace 定義（claude plugin marketplace add に必要）
 ├── skills/
 │   └── slack/
 │       ├── SKILL.md             # /slack スキル本体
@@ -43,7 +45,7 @@ slack/
 │           ├── thread.js        # スレッドパース（history.jsの整形関数を再利用）
 │           ├── search.js        # 検索結果パース
 │           └── cache.js         # キャッシュ読み書き（.cache/channels.json）
-├── manifest.yml                 # Slack App Manifest（利用者がコピペ用）
+├── slack-app-manifest.yml       # Slack App Manifest（利用者がコピペ用）
 ├── README.md                    # セットアップ手順
 └── plans/
 ```
@@ -78,8 +80,8 @@ slack/
 ## scripts のモジュール構成
 
 ```
-common.js   ← stdin読み込み、okチェック、ts→日時変換、出力整形
-cache.js    ← キャッシュ読み書き（.cache/channels.json）、名前→ID変換
+common.js   ← stdin読み込み、okチェック、ts→日時変換、出力整形、ユーザーID→名前変換
+cache.js    ← キャッシュ読み書き（.cache/channels.json, .cache/users.json）、名前→ID変換、ユーザーID→名前変換
 channels.js ← require('./common'), require('./cache')  ※ページネーション対応
 history.js  ← require('./common')
 thread.js   ← require('./common'), require('./history')（整形関数を再利用）
@@ -149,6 +151,8 @@ oauth_config:
       - channels:history
       - channels:read
       - search:read
+      - users:read
+      - usergroups:read
 ```
 
 ## 実装ステップ
