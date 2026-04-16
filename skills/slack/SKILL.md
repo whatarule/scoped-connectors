@@ -117,7 +117,7 @@ done
 2. チャンネル名の解決:
    - `C` で始まる場合はそのまま ID として使用
    - それ以外は `$SKILL_DIR/.cache/channels.json` を Read ツールで読み、チャンネル名から ID を特定
-   - キャッシュが存在しない、またはチャンネルが見つからない場合は「`/slack channels` でキャッシュを更新してください」と案内
+   - キャッシュが存在しない、またはチャンネルが見つからない場合は、チャンネルキャッシュを取得するために `/slack channels` を実行してよいかユーザーに確認し、許可されたら実行してから再度解決する
 3. conversations.history API を呼び出す:
 
 ```bash
@@ -154,6 +154,10 @@ curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
   "https://slack.com/api/conversations.replies?channel=CHANNEL_ID&ts=THREAD_TS" \
   | node "$SKILL_DIR/scripts/thread.js"
 ```
+
+### 出力の注意
+
+結果をユーザーに表示する際、**ts（タイムスタンプ）を必ず含めて**ください。省略しないでください。
 
 ## search サブコマンド
 
