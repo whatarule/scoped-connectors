@@ -1,0 +1,11 @@
+{
+  "name": "slack",
+  "owner": { "name": "whatarule" },
+  "plugins": [
+    {
+      "name": "slack",
+      "description": "Slack からメッセージを取得する Claude Code プラグイン",
+      "source": "./"
+    }
+  ]
+}
