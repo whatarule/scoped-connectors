@@ -1,7 +1,51 @@
 "use strict";
 
 /**
- * stdin から JSON を読み込んで返す
+ * Slack API を呼び出して JSON レスポンスを返す
+ * @param {string} endpoint - API エンドポイント（例: "conversations.history"）
+ * @param {object} params - クエリパラメータ
+ * @returns {Promise<object>}
+ */
+async function fetchSlackApi(endpoint, params = {}) {
+  const token = process.env.SLACK_TOKEN;
+  if (!token) {
+    process.stderr.write(
+      "SLACK_TOKEN が設定されていません。\n" +
+        "~/.claude/settings.json の env に SLACK_TOKEN を設定してください。\n"
+    );
+    process.exit(1);
+  }
+  const query = new URLSearchParams(params).toString();
+  const url = `https://slack.com/api/${endpoint}?${query}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  checkOk(data);
+  return data;
+}
+
+/**
+ * ページネーション対応で Slack API の全ページを取得する
+ * @param {string} endpoint - API エンドポイント
+ * @param {object} params - クエリパラメータ
+ * @param {string} dataKey - レスポンス内のデータ配列のキー（例: "channels", "members"）
+ * @returns {Promise<Array>}
+ */
+async function fetchAllPages(endpoint, params, dataKey) {
+  let all = [];
+  let cursor = "";
+  do {
+    const p = cursor ? { ...params, cursor } : params;
+    const data = await fetchSlackApi(endpoint, p);
+    all = all.concat(data[dataKey] || []);
+    cursor = (data.response_metadata && data.response_metadata.next_cursor) || "";
+  } while (cursor);
+  return all;
+}
+
+/**
+ * stdin から JSON を読み込んで返す（後方互換、#16/#17 で削除予定）
  * @returns {Promise<object>}
  */
 function readStdin() {
@@ -13,8 +57,6 @@ function readStdin() {
     });
     process.stdin.on("end", () => {
       try {
-        // Slack API のレスポンスに含まれる制御文字を除去
-        // 改行・CRも含めてすべて除去（API レスポンスは単一行JSON）
         const cleaned = data.replace(/[\x00-\x1F]/g, " ");
         resolve(JSON.parse(cleaned));
       } catch (e) {
@@ -59,7 +101,7 @@ function formatTs(ts) {
  * @returns {string} "[日時] (ts) ユーザー: テキスト" 形式
  */
 function formatMessage(msg) {
-  const { resolveUser, resolveUsergroup } = require("./cache");
+  const { resolveUser } = require("./cache");
   const datetime = formatTs(msg.ts);
   const rawUser = msg.user || msg.username || "unknown";
   const user = resolveUser(rawUser);
@@ -71,22 +113,25 @@ function formatMessage(msg) {
 
 /**
  * メッセージ本文中のメンションを名前に変換する
- * <@U01ABC> → @ユーザー名
- * <!subteam^S01ABC> → @グループ名
  * @param {string} text
  * @returns {string}
  */
 function resolveMentions(text) {
   const { resolveUser, resolveUsergroup } = require("./cache");
-  // ユーザーメンション: <@U01ABC> or <@U01ABC|display_name>
   text = text.replace(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g, (_, id) => {
     return `@${resolveUser(id)}`;
   });
-  // ユーザーグループメンション: <!subteam^S01ABC> or <!subteam^S01ABC|@handle>
   text = text.replace(/<!subteam\^([A-Z0-9]+)(?:\|[^>]*)?>/g, (_, id) => {
     return `@${resolveUsergroup(id)}`;
   });
   return text;
 }
 
-module.exports = { readStdin, checkOk, formatTs, formatMessage };
+module.exports = {
+  fetchSlackApi,
+  fetchAllPages,
+  readStdin,
+  checkOk,
+  formatTs,
+  formatMessage,
+};
