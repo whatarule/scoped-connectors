@@ -174,8 +174,55 @@ function resolveUsergroup(groupId) {
   return cache.get(groupId) || groupId;
 }
 
+/**
+ * チャンネルキャッシュがなければ自動取得する
+ */
+async function ensureChannelCache() {
+  if (readCache()) return;
+  const { fetchAllPages } = require("./common");
+  const channels = await fetchAllPages(
+    "conversations.list",
+    { types: "public_channel", limit: "1000" },
+    "channels"
+  );
+  const channelMap = new Map();
+  for (const ch of channels) {
+    channelMap.set(ch.name, ch.id);
+  }
+  writeCache(channelMap);
+}
+
+/**
+ * ユーザー・ユーザーグループキャッシュがなければ自動取得する
+ */
+async function ensureUsersCache() {
+  if (readUsersCache() && readUsergroupsCache()) return;
+  const { fetchAllPages, fetchSlackApi } = require("./common");
+
+  if (!readUsersCache()) {
+    const members = await fetchAllPages("users.list", { limit: "1000" }, "members");
+    const usersMap = new Map();
+    for (const m of members) {
+      if (m.deleted) continue;
+      const name = m.profile.display_name || m.real_name || m.name;
+      usersMap.set(m.id, name);
+    }
+    writeUsersCache(usersMap);
+  }
+
+  if (!readUsergroupsCache()) {
+    const groupData = await fetchSlackApi("usergroups.list");
+    const groupsMap = new Map();
+    for (const g of groupData.usergroups || []) {
+      groupsMap.set(g.id, g.handle || g.name);
+    }
+    writeUsergroupsCache(groupsMap);
+  }
+}
+
 module.exports = {
   getCachePath, readCache, writeCache, resolveChannel,
   getUsersCachePath, readUsersCache, writeUsersCache, resolveUser,
   getUsergroupsCachePath, readUsergroupsCache, writeUsergroupsCache, resolveUsergroup,
+  ensureChannelCache, ensureUsersCache,
 };

@@ -1,38 +1,34 @@
 "use strict";
 
-const { readStdin, checkOk } = require("./common");
-const { readUsersCache, writeUsersCache } = require("./cache");
-
-const isAppend = process.argv.includes("--append");
+const { fetchAllPages, fetchSlackApi } = require("./common");
+const { writeUsersCache, writeUsergroupsCache } = require("./cache");
 
 async function main() {
-  const data = await readStdin();
-  checkOk(data);
-
-  const members = data.members || [];
+  // ユーザー取得
+  const members = await fetchAllPages(
+    "users.list",
+    { limit: "1000" },
+    "members"
+  );
 
   // ユーザー一覧を表示
+  const usersMap = new Map();
   for (const m of members) {
     if (m.deleted) continue;
     const name = m.profile.display_name || m.real_name || m.name;
     console.log(`${m.id}\t${name}`);
-  }
-
-  // キャッシュを更新
-  let usersMap;
-  if (isAppend) {
-    usersMap = readUsersCache() || new Map();
-  } else {
-    usersMap = new Map();
-  }
-
-  for (const m of members) {
-    if (m.deleted) continue;
-    const name = m.profile.display_name || m.real_name || m.name;
     usersMap.set(m.id, name);
   }
-
   writeUsersCache(usersMap);
+
+  // ユーザーグループも同時取得
+  const groupData = await fetchSlackApi("usergroups.list");
+  const groupsMap = new Map();
+  for (const g of groupData.usergroups || []) {
+    groupsMap.set(g.id, g.handle || g.name);
+  }
+  writeUsergroupsCache(groupsMap);
+  console.log(`${groupsMap.size}件のユーザーグループをキャッシュしました`);
 }
 
 if (require.main === module) {

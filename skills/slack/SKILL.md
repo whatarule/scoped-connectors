@@ -60,79 +60,29 @@ SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl
 
 ## channels サブコマンド
 
-チャンネル一覧を取得して表示します。
+チャンネル一覧を取得して表示します。ページネーション対応で全件取得し、キャッシュも更新します。
 
 ### 手順
 
-1. conversations.list API を呼び出す:
+スクリプトを実行する（パスはこの SKILL.md があるディレクトリからの絶対パスをリテラルで書くこと。変数展開は使わない）:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
-tmpfile=$(mktemp)
-cursor=""
-first=true
-
-while true; do
-  if [ -z "$cursor" ]; then
-    curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-      "https://slack.com/api/conversations.list?types=public_channel&limit=1000" > "$tmpfile"
-  else
-    encoded_cursor=$(node -e "console.log(encodeURIComponent('$cursor'))")
-    curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-      "https://slack.com/api/conversations.list?types=public_channel&limit=1000&cursor=$encoded_cursor" > "$tmpfile"
-  fi
-
-  if [ "$first" = true ]; then
-    node "$SKILL_DIR/scripts/channels.js" < "$tmpfile"
-    first=false
-  else
-    node "$SKILL_DIR/scripts/channels.js" --append < "$tmpfile"
-  fi
-
-  cursor=$(node -e "
-    let d='';
-    process.stdin.on('data',c=>d+=c);
-    process.stdin.on('end',()=>{
-      const j=JSON.parse(d);
-      const c=j.response_metadata&&j.response_metadata.next_cursor;
-      if(c)process.stdout.write(c);
-    });
-  " < "$tmpfile")
-
-  if [ -z "$cursor" ]; then
-    break
-  fi
-done
-rm -f "$tmpfile"
+node /path/to/skills/slack/scripts/channels.js
 ```
-
-2. `scripts/channels.js` がレスポンスをパースし、チャンネル一覧を表示します
-3. 同時にキャッシュファイル（`.cache/channels.json`）を更新します
 
 ## users サブコマンド
 
-ユーザー一覧を取得してキャッシュを更新します。メッセージの投稿者名を表示するために必要です。
+ユーザー一覧とユーザーグループ一覧を取得してキャッシュを更新します。メッセージの投稿者名・メンション表示に必要です。
 
 ### 手順
 
-1. users.list API を呼び出す（ページネーション対応、channels と同様）:
+スクリプトを実行する:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && tmpfile=$(mktemp) && cursor="" && first=true && while true; do if [ -z "$cursor" ]; then curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/users.list?limit=1000" > "$tmpfile"; else encoded_cursor=$(node -e "console.log(encodeURIComponent('$cursor'))") && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/users.list?limit=1000&cursor=$encoded_cursor" > "$tmpfile"; fi; if [ "$first" = true ]; then node "$SKILL_DIR/scripts/users.js" < "$tmpfile"; first=false; else node "$SKILL_DIR/scripts/users.js" --append < "$tmpfile"; fi; cursor=$(node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const j=JSON.parse(d);const c=j.response_metadata&&j.response_metadata.next_cursor;if(c)process.stdout.write(c);});" < "$tmpfile"); if [ -z "$cursor" ]; then break; fi; done && rm -f "$tmpfile"
+node /path/to/skills/slack/scripts/users.js
 ```
 
-2. `scripts/users.js` がレスポンスをパースし、ユーザー一覧を表示します
-3. 同時にキャッシュファイル（`.cache/users.json`）を更新します
-
-### キャッシュの自動取得
-
-history / thread / search の出力でユーザーIDやグループIDが名前に変換されない場合（キャッシュ未取得時）、ユーザーに「ユーザー・グループキャッシュを取得しますか？」と確認し、許可されたら users サブコマンドの手順を実行してください。
-
-ユーザーグループのキャッシュも同時に取得します:
-
-```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/usergroups.list" | node -e "const fs=require('fs'),path=require('path');let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const j=JSON.parse(d);if(!j.ok){process.stderr.write('Slack API エラー: '+j.error+'\n');process.exit(1);}const m={};(j.usergroups||[]).forEach(g=>{m[g.id]=g.handle||g.name;});const p=path.join('$SKILL_DIR','.cache','usergroups.json');fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n');console.log(Object.keys(m).length+'件のユーザーグループをキャッシュしました');})"
-```
+ユーザーとユーザーグループのキャッシュを同時に更新します。
 
 ## history サブコマンド
 
