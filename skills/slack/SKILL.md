@@ -87,22 +87,17 @@ node /path/to/skills/slack/scripts/users.js
 ## history サブコマンド
 
 指定チャンネルのメッセージ履歴を取得して表示します（デフォルト20件）。
+チャンネル名でもIDでも指定可能。キャッシュ未取得時は自動取得します。
 
 ### 手順
 
-1. 引数からチャンネル名または ID を取得する
-2. キャッシュの確認（API 呼び出しの前に行うこと）:
-   - `$SKILL_DIR/.cache/channels.json` が存在しない場合、チャンネルキャッシュを取得するか確認
-   - `$SKILL_DIR/.cache/users.json` が存在しない場合、ユーザー・グループキャッシュを取得するか確認
-   - 許可されたら channels サブコマンドと users サブコマンドの手順を実行
-3. チャンネル名の解決:
-   - `C` で始まる場合はそのまま ID として使用
-   - それ以外はキャッシュからチャンネル名→IDを特定
-4. conversations.history API を呼び出す:
+スクリプトを実行する:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/conversations.history?channel=CHANNEL_ID&limit=20" | node "$SKILL_DIR/scripts/history.js"
+node /path/to/skills/slack/scripts/history.js <channel> [limit]
 ```
+
+例: `node /path/to/skills/slack/scripts/history.js general 20`
 
 ### 出力の注意
 
@@ -119,22 +114,16 @@ SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl
 
 2つの方法でスレッドを指定できます:
 
-1. **チャンネル + ts**: `/slack thread #general 1234567890.123456`
-2. **Slack メッセージURL**: `/slack thread https://workspace.slack.com/archives/C01ABC/p1234567890123456`
+1. **チャンネル + ts**: `node /path/to/scripts/thread.js general 1234567890.123456`
+2. **Slack メッセージURL**: `node /path/to/scripts/thread.js https://workspace.slack.com/archives/C01ABC/p1234567890123456`
 
 ### 手順
 
-1. 引数を確認:
-   - `http` で始まる場合は Slack URL として扱い、URL から channelId と ts を抽出:
-     - `/archives/CHANNEL_ID/pTIMESTAMP` の形式からパース
-     - `p` の後の数字を先頭10桁 + `.` + 残りに変換して ts とする
-   - それ以外はチャンネル名/ID + ts の2引数として扱う
-2. キャッシュの確認（history と同様、API 呼び出しの前にチャンネル・ユーザー・グループキャッシュの存在を確認し、なければ取得するか確認）
-3. チャンネル名の場合はキャッシュでID変換
-4. conversations.replies API を呼び出す:
+スクリプトを実行する:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/conversations.replies?channel=CHANNEL_ID&ts=THREAD_TS" | node "$SKILL_DIR/scripts/thread.js"
+node /path/to/skills/slack/scripts/thread.js <channel> <ts>
+node /path/to/skills/slack/scripts/thread.js <slack URL>
 ```
 
 ### 出力の注意
@@ -147,13 +136,13 @@ SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl
 
 ### 手順
 
-1. 引数から検索キーワードを取得する
-2. キャッシュの確認（history と同様、API 呼び出しの前にユーザー・グループキャッシュの存在を確認し、なければ取得するか確認）
-3. search.messages API を呼び出す（キーワードは URL エンコードする）:
+スクリプトを実行する:
 
 ```bash
-SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && ENCODED_QUERY=$(node -e "console.log(encodeURIComponent('KEYWORD'))") && curl -s -H "Authorization: Bearer $SLACK_TOKEN" "https://slack.com/api/search.messages?query=$ENCODED_QUERY" | node "$SKILL_DIR/scripts/search.js"
+node /path/to/skills/slack/scripts/search.js <keyword> [count]
 ```
+
+例: `node /path/to/skills/slack/scripts/search.js deploy 50`
 
 ### 出力の注意
 

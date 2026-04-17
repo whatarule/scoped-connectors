@@ -44,28 +44,6 @@ async function fetchAllPages(endpoint, params, dataKey) {
   return all;
 }
 
-/**
- * stdin から JSON を読み込んで返す（後方互換、#16/#17 で削除予定）
- * @returns {Promise<object>}
- */
-function readStdin() {
-  return new Promise((resolve, reject) => {
-    let data = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => {
-      data += chunk;
-    });
-    process.stdin.on("end", () => {
-      try {
-        const cleaned = data.replace(/[\x00-\x1F]/g, " ");
-        resolve(JSON.parse(cleaned));
-      } catch (e) {
-        reject(new Error(`JSON パースエラー: ${e.message}`));
-      }
-    });
-    process.stdin.on("error", reject);
-  });
-}
 
 /**
  * data.ok が false ならエラーメッセージを stderr に出力して終了する
@@ -130,7 +108,6 @@ function resolveMentions(text) {
 module.exports = {
   fetchSlackApi,
   fetchAllPages,
-  readStdin,
   checkOk,
   formatTs,
   formatMessage,
