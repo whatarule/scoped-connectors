@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(slack:slack)",
+      "Bash(SKILL_DIR=*)",
+      "Bash(curl *)",
+      "Bash(node *)",
+      "Bash(tr *)",
+      "Bash(printf *)"
+    ]
+  }
+}
