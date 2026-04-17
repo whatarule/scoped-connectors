@@ -76,4 +76,106 @@ function resolveChannel(nameOrId) {
   return id;
 }
 
-module.exports = { getCachePath, readCache, writeCache, resolveChannel };
+/**
+ * ユーザーキャッシュファイルのパスを返す
+ * @returns {string}
+ */
+function getUsersCachePath() {
+  const scriptsDir = __dirname;
+  return path.join(scriptsDir, "..", ".cache", "users.json");
+}
+
+/**
+ * ユーザーキャッシュを読み込んで { id: name } の Map を返す
+ * ファイルがなければ null を返す
+ * @returns {Map<string, string>|null}
+ */
+function readUsersCache() {
+  const cachePath = getUsersCachePath();
+  try {
+    const data = fs.readFileSync(cachePath, "utf8");
+    const obj = JSON.parse(data);
+    return new Map(Object.entries(obj));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * { id: name } の Map をユーザーキャッシュファイルに書き込む
+ * ディレクトリがなければ作成する
+ * @param {Map<string, string>} usersMap
+ */
+function writeUsersCache(usersMap) {
+  const cachePath = getUsersCachePath();
+  const dir = path.dirname(cachePath);
+  fs.mkdirSync(dir, { recursive: true });
+  const obj = Object.fromEntries(usersMap);
+  fs.writeFileSync(cachePath, JSON.stringify(obj, null, 2) + "\n", "utf8");
+}
+
+/**
+ * ユーザーIDを名前に変換する
+ * キャッシュがなければIDをそのまま返す（エラーにはしない）
+ * @param {string} userId
+ * @returns {string}
+ */
+function resolveUser(userId) {
+  const cache = readUsersCache();
+  if (!cache) return userId;
+  return cache.get(userId) || userId;
+}
+
+/**
+ * ユーザーグループキャッシュファイルのパスを返す
+ * @returns {string}
+ */
+function getUsergroupsCachePath() {
+  const scriptsDir = __dirname;
+  return path.join(scriptsDir, "..", ".cache", "usergroups.json");
+}
+
+/**
+ * ユーザーグループキャッシュを読み込んで { id: name } の Map を返す
+ * @returns {Map<string, string>|null}
+ */
+function readUsergroupsCache() {
+  const cachePath = getUsergroupsCachePath();
+  try {
+    const data = fs.readFileSync(cachePath, "utf8");
+    const obj = JSON.parse(data);
+    return new Map(Object.entries(obj));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * { id: name } の Map をユーザーグループキャッシュに書き込む
+ * @param {Map<string, string>} groupsMap
+ */
+function writeUsergroupsCache(groupsMap) {
+  const cachePath = getUsergroupsCachePath();
+  const dir = path.dirname(cachePath);
+  fs.mkdirSync(dir, { recursive: true });
+  const obj = Object.fromEntries(groupsMap);
+  fs.writeFileSync(cachePath, JSON.stringify(obj, null, 2) + "\n", "utf8");
+}
+
+/**
+ * ユーザーグループIDを名前に変換する
+ * キャッシュがなければIDをそのまま返す
+ * @param {string} groupId
+ * @returns {string}
+ */
+function resolveUsergroup(groupId) {
+  const cache = readUsergroupsCache();
+  if (!cache) return groupId;
+  return cache.get(groupId) || groupId;
+}
+
+module.exports = {
+  getCachePath, readCache, writeCache, resolveChannel,
+  getUsersCachePath, readUsersCache, writeUsersCache, resolveUser,
+  getUsergroupsCachePath, readUsergroupsCache, writeUsergroupsCache, resolveUsergroup,
+};

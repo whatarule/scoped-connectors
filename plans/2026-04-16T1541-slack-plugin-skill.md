@@ -15,11 +15,11 @@
 3. **機能**: channels / history / thread / search の4サブコマンド
 4. **JSONパース**: Node.js（Claude Code に必ず入っている）
 5. **スクリプト**: モジュール分割（common + 機能別 + cache）
-6. **キャッシュ**: スキルディレクトリ内 `.cache/channels.json` と `.cache/users.json`、手動更新（`/slack channels` 実行時にチャンネル、メッセージ取得時にユーザーを更新）
+6. **キャッシュ**: スキルディレクトリ内 `.cache/channels.json`, `.cache/users.json`, `.cache/usergroups.json`、手動更新
 7. **メッセージ取得件数**: デフォルト20件
 8. **チャンネル指定**: 名前でもIDでも可（`C` 始まりならID、それ以外は名前解決）
 9. **スレッド指定**: ts 直接指定 or Slack メッセージURL の両方対応
-10. **出力フォーマット**: コンパクト形式 `[日時] (ts) ユーザー名: メッセージ`（ユーザーIDはキャッシュで名前に変換）
+10. **出力フォーマット**: コンパクト形式 `[日時] (ts) ユーザー名: メッセージ`（投稿者ID・本文中メンション・グループメンションをキャッシュで名前に変換）
 11. **言語**: 日本語（）
 12. **allowed-tools**: Bash, Read, Agent
 13. **ページネーション**: `conversations.list` のみ対応（他は1ページ目のみ）
@@ -80,8 +80,9 @@ slack/
 ## scripts のモジュール構成
 
 ```
-common.js   ← stdin読み込み、okチェック、ts→日時変換、出力整形、ユーザーID→名前変換
-cache.js    ← キャッシュ読み書き（.cache/channels.json, .cache/users.json）、名前→ID変換、ユーザーID→名前変換
+common.js   ← stdin読み込み、okチェック、ts→日時変換、出力整形、ユーザーID→名前変換、本文中メンション解決
+cache.js    ← キャッシュ読み書き（.cache/channels.json, .cache/users.json, .cache/usergroups.json）、名前→ID変換、ユーザーID→名前変換、グループID→名前変換
+users.js    ← require('./common'), require('./cache')  ユーザー一覧パース
 channels.js ← require('./common'), require('./cache')  ※ページネーション対応
 history.js  ← require('./common')
 thread.js   ← require('./common'), require('./history')（整形関数を再利用）

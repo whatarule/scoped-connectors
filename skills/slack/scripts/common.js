@@ -59,12 +59,34 @@ function formatTs(ts) {
  * @returns {string} "[日時] (ts) ユーザー: テキスト" 形式
  */
 function formatMessage(msg) {
+  const { resolveUser, resolveUsergroup } = require("./cache");
   const datetime = formatTs(msg.ts);
-  const user = msg.user || msg.username || "unknown";
-  const text = msg.text || "";
+  const rawUser = msg.user || msg.username || "unknown";
+  const user = resolveUser(rawUser);
+  const text = resolveMentions(msg.text || "");
   const total = (msg.reply_count || 0) + 1;
   const thread = ` [${total}件のメッセージ]`;
   return `[${datetime}] (${msg.ts}) ${user}: ${text}${thread}`;
+}
+
+/**
+ * メッセージ本文中のメンションを名前に変換する
+ * <@U01ABC> → @ユーザー名
+ * <!subteam^S01ABC> → @グループ名
+ * @param {string} text
+ * @returns {string}
+ */
+function resolveMentions(text) {
+  const { resolveUser, resolveUsergroup } = require("./cache");
+  // ユーザーメンション: <@U01ABC> or <@U01ABC|display_name>
+  text = text.replace(/<@([A-Z0-9]+)(?:\|[^>]*)?>/g, (_, id) => {
+    return `@${resolveUser(id)}`;
+  });
+  // ユーザーグループメンション: <!subteam^S01ABC> or <!subteam^S01ABC|@handle>
+  text = text.replace(/<!subteam\^([A-Z0-9]+)(?:\|[^>]*)?>/g, (_, id) => {
+    return `@${resolveUsergroup(id)}`;
+  });
+  return text;
 }
 
 module.exports = { readStdin, checkOk, formatTs, formatMessage };
