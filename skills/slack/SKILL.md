@@ -68,26 +68,28 @@ SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>" && curl
 
 ```bash
 SKILL_DIR="<この SKILL.md があるディレクトリの絶対パス>"
+tmpfile=$(mktemp)
 cursor=""
 first=true
 
 while true; do
   if [ -z "$cursor" ]; then
-    response=$(curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-      "https://slack.com/api/conversations.list?types=public_channel&limit=1000")
+    curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
+      "https://slack.com/api/conversations.list?types=public_channel&limit=1000" > "$tmpfile"
   else
-    response=$(curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
-      "https://slack.com/api/conversations.list?types=public_channel&limit=1000&cursor=$cursor")
+    encoded_cursor=$(node -e "console.log(encodeURIComponent('$cursor'))")
+    curl -s -H "Authorization: Bearer $SLACK_TOKEN" \
+      "https://slack.com/api/conversations.list?types=public_channel&limit=1000&cursor=$encoded_cursor" > "$tmpfile"
   fi
 
   if [ "$first" = true ]; then
-    echo "$response" | node "$SKILL_DIR/scripts/channels.js"
+    node "$SKILL_DIR/scripts/channels.js" < "$tmpfile"
     first=false
   else
     echo "$response" | node "$SKILL_DIR/scripts/channels.js" --append
   fi
 
-  cursor=$(echo "$response" | node -e "
+  cursor=$(node -e "
     let d='';
     process.stdin.on('data',c=>d+=c);
     process.stdin.on('end',()=>{
@@ -95,12 +97,13 @@ while true; do
       const c=j.response_metadata&&j.response_metadata.next_cursor;
       if(c)process.stdout.write(c);
     });
-  ")
+  " < "$tmpfile")
 
   if [ -z "$cursor" ]; then
     break
   fi
 done
+rm -f "$tmpfile"
 ```
 
 2. `scripts/channels.js` がレスポンスをパースし、チャンネル一覧を表示します
