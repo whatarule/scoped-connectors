@@ -2,7 +2,7 @@
 name: slack-history
 description: "Slack チャンネルのメッセージ履歴を取得。Triggers on: /slack-history, 'slackのメッセージ', 'slackの履歴', 'チャンネルの会話', '投稿を確認', 'slackを確認'"
 user-invocable: true
-arguments: "<channel> [limit]"
+arguments: "<channel> [limit] [期間]"
 allowed-tools:
   - Bash
   - Agent
@@ -17,10 +17,29 @@ allowed-tools:
 この SKILL.md があるディレクトリの1つ上の `scripts/history.js` をフルパスリテラルで実行する。変数展開は使わない。
 
 ```bash
-node /path/to/skills/scripts/history.js <channel> [limit]
+node /path/to/skills/scripts/history.js <channel> [limit] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
 ```
 
 例: `node /path/to/skills/scripts/history.js general 20`
+
+## 期間指定
+
+ユーザーが期間を指定した場合（「先週」「4/1から4/15まで」「直近3日」等）、
+日付を YYYY-MM-DD 形式に変換して --after / --before オプションに設定してください。
+
+例:
+- 「先週」→ --after 2026-04-14 --before 2026-04-20
+- 「4/1から4/15」→ --after 2026-04-01 --before 2026-04-15
+- 「直近3日」→ --after 2026-04-21（--before は省略＝現在まで）
+
+例: `node /path/to/skills/scripts/history.js general 50 --after 2026-04-01 --before 2026-04-15`
+
+## 件数指定
+
+ユーザーが数字のみの引数を指定した場合、取得件数として扱い limit に設定してください。
+指定がなければデフォルト20件。API の上限は1000件。
+
+例: `node /path/to/skills/scripts/history.js general 50`
 
 ## 出力の注意
 
