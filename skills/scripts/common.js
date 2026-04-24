@@ -111,4 +111,5 @@ module.exports = {
   checkOk,
   formatTs,
   formatMessage,
+  resolveMentions,
 };

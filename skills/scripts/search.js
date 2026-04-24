@@ -1,6 +1,6 @@
 "use strict";
 
-const { fetchSlackApi, formatTs } = require("./common");
+const { fetchSlackApi, formatTs, resolveMentions } = require("./common");
 const { ensureUsersCache, resolveUser } = require("./cache");
 
 async function main() {
@@ -50,7 +50,7 @@ async function main() {
     const datetime = formatTs(m.ts);
     const channel = m.channel ? m.channel.name : "unknown";
     const user = resolveUser(m.user || m.username || "unknown");
-    const text = m.text || "";
+    const text = resolveMentions(m.text || "");
     console.log(`[${datetime}] #${channel} (${m.ts}) ${user}: ${text}`);
   }
 }
