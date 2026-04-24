@@ -2,7 +2,7 @@
 name: slack-search
 description: "Slack メッセージをキーワード検索。Triggers on: /slack-search, 'メッセージ検索', 'slack検索', 'slackで検索'"
 user-invocable: true
-arguments: "<keyword> [count]"
+arguments: "<keyword> [count] [期間]"
 allowed-tools:
   - Bash
 ---
@@ -16,10 +16,27 @@ allowed-tools:
 この SKILL.md があるディレクトリの1つ上の `scripts/search.js` をフルパスリテラルで実行する。変数展開は使わない。
 
 ```bash
-node /path/to/skills/scripts/search.js <keyword> [count]
+node /path/to/skills/scripts/search.js <keyword> [count] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
 ```
 
 例: `node /path/to/skills/scripts/search.js deploy 50`
+
+## 期間指定
+
+ユーザーが期間を指定した場合（「今月」「先週」「4/1以降」等）、
+日付を YYYY-MM-DD 形式に変換して --after / --before オプションに設定してください。
+
+例:
+- 「今月」→ --after 2026-04-01 --before 2026-04-30
+- 「先週」→ --after 2026-04-14 --before 2026-04-20
+- 「4/1以降」→ --after 2026-04-01
+
+例: `node /path/to/skills/scripts/search.js deploy 50 --after 2026-04-01 --before 2026-04-30`
+
+## 件数指定
+
+ユーザーが数字のみの引数を指定した場合、取得件数として扱い count に設定してください。
+指定がなければデフォルト20件。API の上限は100件。
 
 ## 出力の注意
 
