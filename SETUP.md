@@ -29,7 +29,7 @@
 
 ```sh
 claude plugin marketplace add whatarule/scoped-connectors
-claude plugin install slack@slack
+claude plugin install slack@scoped-connectors
 ```
 
 ## 5. コマンド実行許可の設定（任意）
