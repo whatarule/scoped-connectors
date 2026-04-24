@@ -10,7 +10,9 @@ const { ensureChannelCache, ensureUsersCache, resolveChannel } = require("./cach
  * @returns {string}
  */
 function dateToUnixTs(dateStr, endOfDay = false) {
-  const date = new Date(dateStr);
+  // YYYY-MM-DD をローカルタイムとして解釈（new Date("YYYY-MM-DD") は UTC になるため手動パース）
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
   if (endOfDay) {
     date.setHours(23, 59, 59);
   }
@@ -67,3 +69,5 @@ if (require.main === module) {
     process.exit(1);
   });
 }
+
+module.exports = { dateToUnixTs };
