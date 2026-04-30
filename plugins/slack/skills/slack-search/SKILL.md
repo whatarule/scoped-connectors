@@ -13,13 +13,15 @@ allowed-tools:
 
 ## 手順
 
-この SKILL.md があるディレクトリの1つ上の `scripts/search.js` をフルパスリテラルで実行する。変数展開は使わない。
+スクリプトをフルパスリテラルで実行する。変数展開は使わない。
+スクリプトはこの SKILL.md の2つ上のディレクトリの `scripts/` にある。
+例えばこの SKILL.md が `/a/b/skills/slack-search/SKILL.md` なら、スクリプトは `/a/b/scripts/search.js`。
 
 ```bash
-node /path/to/skills/scripts/search.js <keyword> [count] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
+node /a/b/scripts/search.js <keyword> [count] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
 ```
 
-例: `node /path/to/skills/scripts/search.js deploy 50`
+例: `node /a/b/scripts/search.js deploy 50`
 
 ## 期間指定
 
@@ -31,7 +33,7 @@ node /path/to/skills/scripts/search.js <keyword> [count] [--after YYYY-MM-DD] [-
 - 「先週」→ --after 2026-04-14 --before 2026-04-20
 - 「4/1以降」→ --after 2026-04-01
 
-例: `node /path/to/skills/scripts/search.js deploy 50 --after 2026-04-01 --before 2026-04-30`
+例: `node /a/b/scripts/search.js deploy 50 --after 2026-04-01 --before 2026-04-30`
 
 ## 件数指定
 

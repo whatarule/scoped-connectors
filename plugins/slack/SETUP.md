@@ -1,4 +1,4 @@
-# セットアップ手順
+# Slack プラグイン セットアップ
 
 ## 1. Slack App の作成
 
@@ -6,7 +6,6 @@
 2. 「Create New App」→「From a manifest」を選択
 3. ワークスペースを選択
 4. 本リポジトリの [`slack-app-manifest.json`](slack-app-manifest.json) の内容を貼り付けて作成
-
 
 ## 2. ワークスペースにインストールして User Token を取得
 
@@ -25,15 +24,8 @@
 }
 ```
 
-## 4. プラグインのインストール
-
-```sh
-claude plugin marketplace add whatarule/scoped-connectors
-claude plugin install slack@scoped-connectors
-```
-
-## 5. コマンド実行許可の設定（任意）
+## 4. コマンド実行許可の設定（任意）
 
 初回実行時に毎回許可を求められるのが煩わしい場合、プロジェクトまたはユーザーの設定ファイルに許可設定を追加してください。
 
-設定例は [`verification/.claude/settings.json`](verification/.claude/settings.json) を参照してください。
+設定例は [`verification/.claude/settings.json`](../../verification/.claude/settings.json) を参照してください。

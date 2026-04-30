@@ -14,13 +14,15 @@ allowed-tools:
 
 ## 手順
 
-この SKILL.md があるディレクトリの1つ上の `scripts/history.js` をフルパスリテラルで実行する。変数展開は使わない。
+スクリプトをフルパスリテラルで実行する。変数展開は使わない。
+スクリプトはこの SKILL.md の2つ上のディレクトリの `scripts/` にある。
+例えばこの SKILL.md が `/a/b/skills/slack-history/SKILL.md` なら、スクリプトは `/a/b/scripts/history.js`。
 
 ```bash
-node /path/to/skills/scripts/history.js <channel> [limit] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
+node /a/b/scripts/history.js <channel> [limit] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
 ```
 
-例: `node /path/to/skills/scripts/history.js general 20`
+例: `node /a/b/scripts/history.js general 20`
 
 ## 期間指定
 
@@ -32,14 +34,14 @@ node /path/to/skills/scripts/history.js <channel> [limit] [--after YYYY-MM-DD] [
 - 「4/1から4/15」→ --after 2026-04-01 --before 2026-04-15
 - 「直近3日」→ --after 2026-04-21（--before は省略＝現在まで）
 
-例: `node /path/to/skills/scripts/history.js general 50 --after 2026-04-01 --before 2026-04-15`
+例: `node /a/b/scripts/history.js general 50 --after 2026-04-01 --before 2026-04-15`
 
 ## 件数指定
 
 ユーザーが数字のみの引数を指定した場合、取得件数として扱い limit に設定してください。
 指定がなければデフォルト20件。API の上限は1000件。
 
-例: `node /path/to/skills/scripts/history.js general 50`
+例: `node /a/b/scripts/history.js general 50`
 
 ## 出力の注意
 

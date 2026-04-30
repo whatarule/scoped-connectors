@@ -1,39 +1,17 @@
-# Claude Slack Reader
+# Scoped Connectors
 
-Claude Code から Slack のメッセージを取得・検索するためのプラグインです。
-インストールするとコマンドや自然言語（「generalの最近のメッセージ見せて」など）で、チャンネルの投稿内容やスレッドを確認できます。
+AI コーディングエージェント（Claude Code, Codex 等）から外部サービスの情報を読み取るためのプラグインマーケットプレイスです。
 
-このプラグインは**読み取り専用**です。メッセージの送信・編集・削除は一切行いません。
+## インストール
 
-| スコープ | 用途 |
-|---|---|
-| `channels:read` | パブリックチャンネルの一覧取得 |
-| `channels:history` | チャンネルのメッセージ履歴取得 |
-| `search:read` | メッセージ検索 |
-| `users:read` | ユーザー名の表示 |
-| `usergroups:read` | ユーザーグループ名の表示 |
-
-**[セットアップ手順はこちら](SETUP.md)**
-
-## 使い方
-
-| コマンド | 説明 |
-|---|---|
-| `/slack-channels` | チャンネル一覧を表示 |
-| `/slack-users` | ユーザー・グループキャッシュを更新 |
-| `/slack-history <channel> [limit]` | 指定チャンネルのメッセージを取得 |
-| `/slack-history <channel> [limit] 先週` | 期間指定でメッセージを取得 |
-| `/slack-thread <channel> <ts>` | スレッドのメッセージを取得（ts指定） |
-| `/slack-thread <URL>` | スレッドのメッセージを取得（URL指定、チャンネル不要） |
-| `/slack-search <keyword> [count]` | メッセージを検索 |
-| `/slack-search <keyword> [count] 今月` | 期間指定で検索 |
-
-`ts` はメッセージのタイムスタンプ（例: `1776320535.121069`）で、Slack がメッセージを一意に識別するために使う値です。
-`/slack-history` の出力に含まれるので、そこからコピーして `/slack-thread` に渡せます。
-Slack のメッセージURLでも指定できます（例: `https://workspace.slack.com/archives/C01ABC/p1776320535121069`）。
-
-自然言語でも利用できます。
-
+```sh
+# Claude Code
+claude plugin marketplace add whatarule/scoped-connectors
+claude plugin install slack@scoped-connectors
 ```
-generalの最近のメッセージ見せて
-```
+
+## プラグイン一覧
+
+| プラグイン | 説明 | セットアップ |
+|---|---|---|
+| [Slack](plugins/slack/README.md) | Slack のメッセージ取得・検索 | [セットアップ](plugins/slack/SETUP.md) |

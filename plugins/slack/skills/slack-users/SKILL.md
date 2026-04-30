@@ -12,8 +12,10 @@ allowed-tools:
 
 ## 手順
 
-この SKILL.md があるディレクトリの1つ上の `scripts/users.js` をフルパスリテラルで実行する。変数展開は使わない。
+スクリプトをフルパスリテラルで実行する。変数展開は使わない。
+スクリプトはこの SKILL.md の2つ上のディレクトリの `scripts/` にある。
+例えばこの SKILL.md が `/a/b/skills/slack-users/SKILL.md` なら、スクリプトは `/a/b/scripts/users.js`。
 
 ```bash
-node /path/to/skills/scripts/users.js
+node /a/b/scripts/users.js
 ```
