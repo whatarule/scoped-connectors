@@ -17,12 +17,12 @@ Slack のメッセージを取得・検索するプラグインです。
 | `/slack-users` | ユーザー・グループキャッシュを更新 |
 | `/slack-history <channel> [limit]` | 指定チャンネルのメッセージを取得 |
 | `/slack-history <channel> [limit] 先週` | 期間指定でメッセージを取得 |
-| `/slack-thread <channel> <ts>` | スレッドのメッセージを取得（ts指定） |
+| `/slack-thread <channel> <timestamp>` | スレッドのメッセージを取得（ts指定） |
 | `/slack-thread <URL>` | スレッドのメッセージを取得（URL指定、チャンネル不要） |
 | `/slack-search <keyword> [count]` | メッセージを検索 |
 | `/slack-search <keyword> [count] 今月` | 期間指定で検索 |
 
-`ts` はメッセージのタイムスタンプ（例: `1776320535.121069`）で、Slack がメッセージを一意に識別するために使う値です。
+`timestamp` は Slack がメッセージを一意に識別するための値です（例: `1776320535.121069`）。
 メッセージ取得の出力に含まれるので、そこからコピーしてスレッド取得に使えます。
 Slack のメッセージURLでも指定できます。
 
