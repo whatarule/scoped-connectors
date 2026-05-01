@@ -1,3 +1,3 @@
 .cache/
-.claude/settings.local.json
+**/settings.local.json
 .DS_Store
