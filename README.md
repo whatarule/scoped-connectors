@@ -14,6 +14,18 @@ codex plugin marketplace add whatarule/scoped-connectors
 # Codex セッション内で /plugins から slack をインストール
 ```
 
+## アンインストール
+
+```sh
+# Claude Code
+claude plugin uninstall slack@scoped-connectors
+claude plugin marketplace remove scoped-connectors
+
+# Codex
+# Codex セッション内で /plugins からプラグインをアンインストール
+codex plugin marketplace remove scoped-connectors
+```
+
 ## プラグイン一覧
 
 | プラグイン | 説明 | セットアップ |
