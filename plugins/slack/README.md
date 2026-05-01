@@ -41,12 +41,3 @@ $slack generalの最近のメッセージを5件見せて
 $slack deployで今月を検索して
 ```
 
-## 権限スコープ
-
-| スコープ | 用途 |
-|---|---|
-| `channels:read` | パブリックチャンネルの一覧取得 |
-| `channels:history` | チャンネルのメッセージ履歴取得 |
-| `search:read` | メッセージ検索 |
-| `users:read` | ユーザー名の表示 |
-| `usergroups:read` | ユーザーグループ名の表示 |

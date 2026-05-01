@@ -17,6 +17,16 @@ claude plugin install slack@scoped-connectors
 3. ワークスペースを選択
 4. 本リポジトリの [`slack-app-manifest.json`](slack-app-manifest.json) の内容を貼り付けて作成
 
+manifest により以下の読み取り専用スコープが設定されます:
+
+| スコープ | 用途 |
+|---|---|
+| `channels:read` | パブリックチャンネルの一覧取得 |
+| `channels:history` | チャンネルのメッセージ履歴取得 |
+| `search:read` | メッセージ検索 |
+| `users:read` | ユーザー名の表示 |
+| `usergroups:read` | ユーザーグループ名の表示 |
+
 ## 3. ワークスペースにインストールして User Token を取得
 
 1. 作成した App の「Install App」ページからワークスペースにインストール
