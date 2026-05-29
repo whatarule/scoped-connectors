@@ -1,7 +1,7 @@
 ---
 name: slack-search
-description: "Slack メッセージをキーワード検索。Triggers on: /slack-search, 'メッセージ検索', 'slack検索', 'slackで検索'"
-user-invocable: true
+description: "無効化中: Slack 検索は search:read がプライベートチャンネル結果を返す可能性があるため使用しない"
+user-invocable: false
 arguments: "<keyword> [count] [期間]"
 allowed-tools:
   - Bash
@@ -9,47 +9,9 @@ allowed-tools:
 
 # slack-search
 
-メッセージをキーワード検索します。
+このスキルは現在無効です。
 
-## 手順
+`search:read` / `search.messages` は、認可ユーザーが閲覧できるプライベートチャンネルの検索結果を返す可能性があるため使いません。
+パブリックチャンネル限定検索は別途実装予定です。
 
-スクリプトをフルパスリテラルで実行する。変数展開は使わない。
-スクリプトはこの SKILL.md の2つ上のディレクトリの `scripts/` にある。
-例えばこの SKILL.md が `/a/b/skills/slack-search/SKILL.md` なら、スクリプトは `/a/b/scripts/search.js`。
-
-```bash
-node /a/b/scripts/search.js <keyword> [count] [--after YYYY-MM-DD] [--before YYYY-MM-DD]
-```
-
-例: `node /a/b/scripts/search.js deploy 50`
-
-## 期間指定
-
-ユーザーが期間を指定した場合（「今月」「先週」「4/1以降」等）、
-日付を YYYY-MM-DD 形式に変換して --after / --before オプションに設定してください。
-
-例:
-- 「今月」→ --after 2026-04-01 --before 2026-04-30
-- 「先週」→ --after 2026-04-14 --before 2026-04-20
-- 「4/1以降」→ --after 2026-04-01
-
-例: `node /a/b/scripts/search.js deploy 50 --after 2026-04-01 --before 2026-04-30`
-
-## 件数指定
-
-ユーザーが数字のみの引数を指定した場合、取得件数として扱い count に設定してください。
-指定がなければデフォルト20件。API の上限は100件。
-
-## 出力の注意
-
-## 出力の注意
-
-各メッセージの以下の情報は**必ず含めて**ください。省略しないでください。
-- 日時
-- チャンネル名
-- タイムスタンプ（括弧なしで `1234567890.123456` の形式）
-- ユーザー名
-
-メッセージ本文は要約して構いません。
-
-結果の末尾に「必要ならタイムスタンプを指定して特定の投稿のスレッドも開けます。」と案内してください。
+Slack の内容確認が必要な場合は、`slack-history` でパブリックチャンネルを明示して取得してください。

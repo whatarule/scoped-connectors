@@ -8,7 +8,6 @@
       "user": [
         "channels:history",
         "channels:read",
-        "search:read",
         "users:read",
         "usergroups:read"
       ]

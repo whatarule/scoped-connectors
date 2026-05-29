@@ -23,9 +23,10 @@ manifest により以下の読み取り専用スコープが設定されます:
 |---|---|
 | `channels:read` | パブリックチャンネルの一覧取得 |
 | `channels:history` | チャンネルのメッセージ履歴取得 |
-| `search:read` | メッセージ検索 |
 | `users:read` | ユーザー名の表示 |
 | `usergroups:read` | ユーザーグループ名の表示 |
+
+`search:read` は付与しません。Slack の `search.messages` は認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、このプラグインでは検索機能を一時的に無効化しています。
 
 ## 3. ワークスペースにインストールして User Token を取得
 
@@ -66,7 +67,32 @@ export SLACK_TOKEN=xoxp-xxxx-xxxx-xxxx-xxxx
 
 Codex の場合は `codex --full-auto` で実行すれば個別の許可設定は不要です。
 
+## 参考: プラグインの更新
+
+### Claude Code
+
+```sh
+claude plugin update slack@scoped-connectors
+```
+
+更新後は Claude Code を再起動してください。
+
+### Codex
+
+Codex は marketplace snapshot を更新してから、プラグインを入れ直します。
+
+```sh
+codex plugin marketplace upgrade scoped-connectors
+codex plugin remove slack@scoped-connectors
+codex plugin add slack@scoped-connectors
+```
+
+更新後は Codex セッションを再起動してください。
+
 ## 参考: アンインストール
+
+プラグインのアンインストールは、ローカルの Claude Code / Codex からこのプラグインを外す操作です。
+Slack App や発行済み OAuth Token の削除とは別です。
 
 ```sh
 # Claude Code
@@ -75,3 +101,15 @@ claude plugin uninstall slack@scoped-connectors
 # Codex
 # Codex セッション内で /plugins からプラグインをアンインストール
 ```
+
+## 参考: Slack App の削除
+
+作成した Slack App 自体を削除する場合は、Slack の App 管理画面から操作します。
+
+1. [api.slack.com/apps](https://api.slack.com/apps) にアクセス
+2. 削除したい App を選択
+3. 左メニューの「Basic Information」を開く
+4. ページ下部の「Delete App」から削除する
+
+削除すると、その App から発行された OAuth Token は利用できなくなります。
+権限を見直して作り直す場合は、削除後に本手順の「Slack App の作成」からやり直してください。
