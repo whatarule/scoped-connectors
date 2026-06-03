@@ -26,6 +26,39 @@ async function fetchSlackApi(endpoint, params = {}) {
 }
 
 /**
+ * Slack API を JSON POST で呼び出して JSON レスポンスを返す
+ * @param {string} endpoint - API エンドポイント
+ * @param {object} body - JSON body
+ * @param {object} options - オプション
+ * @param {boolean} options.skipCheck - true なら ok チェックを呼び出し側で行う
+ * @returns {Promise<object>}
+ */
+async function fetchSlackApiJson(endpoint, body = {}, options = {}) {
+  const token = process.env.SLACK_TOKEN;
+  if (!token) {
+    process.stderr.write(
+      "SLACK_TOKEN が設定されていません。\n" +
+        "~/.claude/settings.json の env に SLACK_TOKEN を設定してください。\n"
+    );
+    process.exit(1);
+  }
+  const url = `https://slack.com/api/${endpoint}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!options.skipCheck) {
+    checkOk(data);
+  }
+  return data;
+}
+
+/**
  * ページネーション対応で Slack API の全ページを取得する
  * @param {string} endpoint - API エンドポイント
  * @param {object} params - クエリパラメータ
@@ -107,6 +140,7 @@ function resolveMentions(text) {
 
 module.exports = {
   fetchSlackApi,
+  fetchSlackApiJson,
   fetchAllPages,
   checkOk,
   formatTs,

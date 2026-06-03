@@ -23,15 +23,20 @@ manifest により以下の読み取り専用スコープが設定されます:
 |---|---|
 | `channels:read` | パブリックチャンネルの一覧取得 |
 | `channels:history` | チャンネルのメッセージ履歴取得 |
+| `search:read.public` | Real-time Search API でのパブリックチャンネル検索 |
 | `users:read` | ユーザー名の表示 |
 | `usergroups:read` | ユーザーグループ名の表示 |
 
-`search:read` は付与しません。Slack の `search.messages` は認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、このプラグインでは検索機能を一時的に無効化しています。
+このプラグインの検索は `search:read.public` scope の Real-time Search API で実装しています。
+認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、`search:read` は付与しません。
 
 ## 3. ワークスペースにインストールして User Token を取得
 
 1. 作成した App の「Install App」ページからワークスペースにインストール
 2. インストール後に表示される **User OAuth Token**（`xoxp-` で始まるトークン）をコピー
+
+既存 App に scope を追加した場合、管理側で承認済みになった後も、必ず「Install App」ページから再インストールしてください。
+再インストールしないと、Slack API の `provided` scope に新しい権限が反映されないことがあります。
 
 ## 4. 環境変数の設定
 

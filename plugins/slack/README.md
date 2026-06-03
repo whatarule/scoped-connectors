@@ -19,8 +19,8 @@ Slack のメッセージを取得・検索するプラグインです。
 | `/slack-history <channel> [limit] 先週` | 期間指定でメッセージを取得 |
 | `/slack-thread <channel> <timestamp>` | スレッドのメッセージを取得（ts指定） |
 | `/slack-thread <URL>` | スレッドのメッセージを取得（URL指定、チャンネル不要） |
-
-`/slack-search` は現在無効です。Slack の `search:read` / `search.messages` は、認可ユーザーが閲覧できるプライベートチャンネルの検索結果を返す可能性があるため使いません。パブリックチャンネル限定検索は別途実装予定です。
+| `/slack-search <keyword> [count]` | パブリックチャンネルの投稿を検索（デフォルト3件、最大100件） |
+| `/slack-search <keyword> [count] 先週` | 期間指定でパブリックチャンネルの投稿を検索 |
 
 `timestamp` は Slack がメッセージを一意に識別するための値です（例: `1776320535.121069`）。
 メッセージ取得の出力に含まれるので、そこからコピーしてスレッド取得に使えます。
