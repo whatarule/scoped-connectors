@@ -1,0 +1,19 @@
+{
+  "name": "google-drive",
+  "version": "0.1.0",
+  "description": "Google Drive API に読み取り専用で接続するプラグイン",
+  "author": { "name": "whatarule" },
+  "repository": "https://github.com/whatarule/scoped-connectors",
+  "license": "MIT",
+  "keywords": ["google-drive", "drive", "google"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Google Drive",
+    "shortDescription": "Google Drive API の読み取り専用接続",
+    "longDescription": "Google Drive API に読み取り専用 scope で接続し、Drive 上のファイル、Activity 履歴、Labels を参照できるようにします。",
+    "developerName": "whatarule",
+    "category": "Productivity",
+    "capabilities": ["Read", "API connection check"],
+    "defaultPrompt": ["Driveにつながるか確認して"]
+  }
+}

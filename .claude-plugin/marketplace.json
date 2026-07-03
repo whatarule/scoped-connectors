@@ -6,6 +6,11 @@
       "name": "slack",
       "description": "Slack からメッセージを取得する Claude Code プラグイン",
       "source": "./plugins/slack"
+    },
+    {
+      "name": "google-drive",
+      "description": "Google Drive API に読み取り専用で接続するプラグイン",
+      "source": "./plugins/google-drive"
     }
   ]
 }
