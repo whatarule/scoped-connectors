@@ -152,12 +152,17 @@ function buildDriveUrl(path, params = {}) {
   return url;
 }
 
+function driveApiErrorReasons(data) {
+  const apiError = data && data.error ? data.error : {};
+  return Array.isArray(apiError.errors)
+    ? [...new Set(apiError.errors.map((err) => err.reason).filter(Boolean))]
+    : [];
+}
+
 function formatDriveApiError(status, data, fallbackText) {
   const apiError = data && data.error ? data.error : {};
   const message = apiError.message || fallbackText || "unknown error";
-  const reasons = Array.isArray(apiError.errors)
-    ? [...new Set(apiError.errors.map((err) => err.reason).filter(Boolean))]
-    : [];
+  const reasons = driveApiErrorReasons(data);
 
   const hints = [];
   if (status === 401) {
@@ -175,17 +180,60 @@ function formatDriveApiError(status, data, fallbackText) {
   return `Google Drive API エラー: HTTP ${status}${reasonText}: ${message}${suffix}`;
 }
 
-async function fetchDriveApi(path, params = {}, options = {}) {
-  const auth = options.auth || await getAccessToken();
-  const url = buildDriveUrl(path, params);
-  const response = await fetch(url, {
-    method: options.method || "GET",
-    headers: {
-      Authorization: `Bearer ${auth.token}`,
-      Accept: "application/json",
-    },
-  });
+const MAX_RETRIES = 3;
+const RETRY_BASE_MS = 300;
+const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
+function isRetryableError(status, data) {
+  if (RETRYABLE_STATUSES.has(status)) return true;
+  if (status === 403) {
+    const reasons = driveApiErrorReasons(data);
+    return reasons.includes("rateLimitExceeded") || reasons.includes("userRateLimitExceeded");
+  }
+  return false;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestDriveResponse(path, params, options, accept) {
+  const auth = options.auth || (await getAccessToken());
+  const url = buildDriveUrl(path, params);
+  const maxRetries = options.maxRetries === undefined ? MAX_RETRIES : options.maxRetries;
+  const retryBaseMs = options.retryBaseMs === undefined ? RETRY_BASE_MS : options.retryBaseMs;
+
+  for (let attempt = 0; ; attempt++) {
+    if (attempt > 0) await sleep(retryBaseMs * 2 ** (attempt - 1));
+
+    const response = await fetch(url, {
+      method: options.method || "GET",
+      headers: {
+        Authorization: `Bearer ${auth.token}`,
+        Accept: accept,
+      },
+    });
+    if (response.ok) return { response, auth };
+
+    const text = await response.text();
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (_err) {
+        data = null;
+      }
+    }
+    const error = new Error(formatDriveApiError(response.status, data, text));
+    error.status = response.status;
+    if (attempt >= maxRetries || !isRetryableError(response.status, data)) {
+      throw error;
+    }
+  }
+}
+
+async function fetchDriveApi(path, params = {}, options = {}) {
+  const { response, auth } = await requestDriveResponse(path, params, options, "application/json");
   const text = await response.text();
   let data = null;
   if (text) {
@@ -195,12 +243,18 @@ async function fetchDriveApi(path, params = {}, options = {}) {
       data = null;
     }
   }
-
-  if (!response.ok) {
-    throw new Error(formatDriveApiError(response.status, data, text));
-  }
-
   return { data, tokenSource: auth.source };
+}
+
+// alt=media / export のバイナリ・テキスト本文取得用
+async function fetchDriveApiRaw(path, params = {}, options = {}) {
+  const { response, auth } = await requestDriveResponse(path, params, options, "*/*");
+  const arrayBuffer = await response.arrayBuffer();
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: response.headers.get("content-type") || "",
+    tokenSource: auth.source,
+  };
 }
 
 module.exports = {
@@ -224,5 +278,7 @@ module.exports = {
   getAccessToken,
   buildDriveUrl,
   formatDriveApiError,
+  isRetryableError,
   fetchDriveApi,
+  fetchDriveApiRaw,
 };

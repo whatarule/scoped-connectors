@@ -1,7 +1,7 @@
 {
   "name": "google-drive",
-  "version": "0.1.0",
-  "description": "Google Drive API に読み取り専用で接続するプラグイン",
+  "version": "0.2.0",
+  "description": "許可フォルダ配下の Google Drive ファイルを読み取り専用で参照するプラグイン",
   "author": { "name": "whatarule" },
   "repository": "https://github.com/whatarule/scoped-connectors",
   "license": "MIT",
