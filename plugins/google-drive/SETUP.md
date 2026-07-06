@@ -69,7 +69,28 @@ node plugins/google-drive/scripts/check-connection.js
 
 成功すると、認証元と Drive ユーザー情報だけを表示します。access token は表示しません。
 
-## 5. サンドボックスのネットワーク許可
+## 5. 許可フォルダの設定（必須）
+
+このプラグインは、許可したフォルダの配下にあるファイルだけを参照できます。
+未設定のままではファイルの読み取りはできません（接続確認だけが動きます）。
+
+`~/.config/drive-api/config.json` に、参照を許可するフォルダの ID を設定してください。
+
+```json
+{
+  "allowedFolderIds": ["1AbCdEfGhIjKlMnOpQrStUvWxYz12345"]
+}
+```
+
+- フォルダ ID は、Drive でフォルダを開いたときの URL `https://drive.google.com/drive/folders/<この部分>` です
+- 複数指定できます。各フォルダの**配下すべて**（サブフォルダ以下も含む）が対象になります
+- 許可フォルダの配下と確認できないファイル（共有アイテム等、親フォルダを判定できないもの）は読み取りを拒否します
+- 設定ファイルのパスは `GOOGLE_DRIVE_CONFIG_PATH` 環境変数で変更できます
+
+> **注意**: これはプラグインのスクリプト層で参照範囲を絞る仕組みです。OAuth token 自体は
+> `drive.readonly` scope で Drive 全体を読めるため、プラグインを経由しない API 直接アクセスまでは制限できません。
+
+## 6. サンドボックスのネットワーク許可
 
 サンドボックス内の Bash はネットワークが遮断されるため、Google Drive API への接続許可を必ず設定してください。
 

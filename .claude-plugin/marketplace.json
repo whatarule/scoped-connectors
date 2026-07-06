@@ -9,7 +9,7 @@
     },
     {
       "name": "google-drive",
-      "description": "Google Drive API に読み取り専用で接続するプラグイン",
+      "description": "許可フォルダ配下の Google Drive ファイルを読み取り専用で参照するプラグイン",
       "source": "./plugins/google-drive"
     }
   ]
