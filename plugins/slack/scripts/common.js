@@ -1,18 +1,20 @@
 "use strict";
 
-const { readTokenRecord } = require("./token-store");
+const { getSlackAccessToken } = require("./auth");
 
 async function resolveSlackToken(options = {}) {
-  const readRecord = options.readTokenRecord || readTokenRecord;
-  const record = await readRecord();
-  if (record && record.access_token) {
-    return record.access_token;
-  }
-  return "";
+  const getToken = options.getSlackAccessToken || getSlackAccessToken;
+  return getToken(options);
 }
 
 async function requireSlackToken() {
-  const token = await resolveSlackToken();
+  let token;
+  try {
+    token = await resolveSlackToken();
+  } catch (err) {
+    process.stderr.write(`${err.message}\n`);
+    process.exit(1);
+  }
   if (token) return token;
 
   process.stderr.write(

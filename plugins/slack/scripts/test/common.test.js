@@ -5,7 +5,9 @@ const { formatTs, checkOk, resolveSlackToken } = require("../common");
 describe("resolveSlackToken", () => {
   it("Keychain token store の access token を返す", async () => {
     const token = await resolveSlackToken({
-      readTokenRecord: async () => ({ access_token: "xoxe-store" }),
+      now: 1_000,
+      refreshWindowMs: 1_000,
+      readTokenRecord: async () => ({ access_token: "xoxe-store", expires_at: 60_000 }),
     });
 
     assert.equal(token, "xoxe-store");
