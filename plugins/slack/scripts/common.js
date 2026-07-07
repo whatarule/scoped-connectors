@@ -1,5 +1,28 @@
 "use strict";
 
+const { readTokenRecord } = require("./token-store");
+
+async function resolveSlackToken(options = {}) {
+  const readRecord = options.readTokenRecord || readTokenRecord;
+  const record = await readRecord();
+  if (record && record.access_token) {
+    return record.access_token;
+  }
+  return "";
+}
+
+async function requireSlackToken() {
+  const token = await resolveSlackToken();
+  if (token) return token;
+
+  process.stderr.write(
+    "Slack token が見つかりません。\n" +
+      "slack-auth でログインして OS secure store に token を保存してください。\n" +
+      "Codex では Keychain を読むために sandbox 外実行が必要です。\n"
+  );
+  process.exit(1);
+}
+
 /**
  * Slack API を呼び出して JSON レスポンスを返す
  * @param {string} endpoint - API エンドポイント（例: "conversations.history"）
@@ -7,14 +30,7 @@
  * @returns {Promise<object>}
  */
 async function fetchSlackApi(endpoint, params = {}) {
-  const token = process.env.SLACK_TOKEN;
-  if (!token) {
-    process.stderr.write(
-      "SLACK_TOKEN が設定されていません。\n" +
-        "~/.claude/settings.json の env に SLACK_TOKEN を設定してください。\n"
-    );
-    process.exit(1);
-  }
+  const token = await requireSlackToken();
   const query = new URLSearchParams(params).toString();
   const url = `https://slack.com/api/${endpoint}?${query}`;
   const res = await fetch(url, {
@@ -34,14 +50,7 @@ async function fetchSlackApi(endpoint, params = {}) {
  * @returns {Promise<object>}
  */
 async function fetchSlackApiJson(endpoint, body = {}, options = {}) {
-  const token = process.env.SLACK_TOKEN;
-  if (!token) {
-    process.stderr.write(
-      "SLACK_TOKEN が設定されていません。\n" +
-        "~/.claude/settings.json の env に SLACK_TOKEN を設定してください。\n"
-    );
-    process.exit(1);
-  }
+  const token = await requireSlackToken();
   const url = `https://slack.com/api/${endpoint}`;
   const res = await fetch(url, {
     method: "POST",
@@ -139,6 +148,8 @@ function resolveMentions(text) {
 }
 
 module.exports = {
+  resolveSlackToken,
+  requireSlackToken,
   fetchSlackApi,
   fetchSlackApiJson,
   fetchAllPages,
