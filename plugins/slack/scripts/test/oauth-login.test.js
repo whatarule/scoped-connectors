@@ -13,6 +13,9 @@ const {
   applyDefaults,
   parseArgs,
   validateOptions,
+  extractGrantedScopes,
+  getMissingRequiredScopes,
+  validateGrantedScopes,
   base64Url,
   createPkcePair,
   buildAuthorizeUrl,
@@ -116,6 +119,65 @@ describe("normalizeTeamIds", () => {
   it("配列とカンマ区切り文字列を team id 配列へ正規化する", () => {
     assert.deepEqual(normalizeTeamIds(["T123", " T456 "]), ["T123", "T456"]);
     assert.deepEqual(normalizeTeamIds("T123, T456"), ["T123", "T456"]);
+  });
+});
+
+describe("scope validation", () => {
+  it("top-level scope と authed_user.scope を正規化する", () => {
+    assert.deepEqual(
+      Array.from(extractGrantedScopes({ scope: "channels:read users:read,search:read.public" })).sort(),
+      ["channels:read", "search:read.public", "users:read"]
+    );
+    assert.deepEqual(
+      Array.from(extractGrantedScopes({ authed_user: { scope: ["channels:read", "users:read"] } })).sort(),
+      ["channels:read", "users:read"]
+    );
+  });
+
+  it("必要な scope が揃っていれば不足なしにする", () => {
+    assert.deepEqual(
+      getMissingRequiredScopes(extractGrantedScopes({ authed_user: { scope: READONLY_SCOPES.join(",") } })),
+      []
+    );
+    assert.doesNotThrow(() =>
+      validateGrantedScopes({ scope: READONLY_SCOPES.join(",") })
+    );
+  });
+
+  it("不足 scope があれば token を保存する前に失敗し、token 値を出さない", () => {
+    const tokenResponse = {
+      access_token: "xoxe.xoxp-secret",
+      refresh_token: "xoxe-refresh-secret",
+      scope: "channels:read,users:read",
+    };
+
+    assert.deepEqual(
+      getMissingRequiredScopes(extractGrantedScopes(tokenResponse)),
+      ["channels:history", "search:read.public", "usergroups:read"]
+    );
+    assert.throws(
+      () => validateGrantedScopes(tokenResponse),
+      (err) => {
+        assert.match(err.message, /scope が不足/);
+        assert.match(err.message, /channels:history/);
+        assert.match(err.message, /search:read\.public/);
+        assert.doesNotMatch(err.message, /xoxe\.xoxp-secret/);
+        assert.doesNotMatch(err.message, /xoxe-refresh-secret/);
+        return true;
+      }
+    );
+  });
+
+  it("scope が response に含まれなければ再インストールと再ログインを促す", () => {
+    assert.throws(
+      () => validateGrantedScopes({ access_token: "xoxe.xoxp-secret" }),
+      (err) => {
+        assert.match(err.message, /scope が含まれていません/);
+        assert.match(err.message, /再ログイン/);
+        assert.doesNotMatch(err.message, /xoxe\.xoxp-secret/);
+        return true;
+      }
+    );
   });
 });
 

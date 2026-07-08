@@ -134,6 +134,34 @@ function validateOptions(options) {
   }
 }
 
+function extractGrantedScopes(tokenResponse = {}) {
+  const scopeValue =
+    tokenResponse.scope ||
+    (tokenResponse.authed_user && tokenResponse.authed_user.scope) ||
+    "";
+  const rawScopes = Array.isArray(scopeValue) ? scopeValue : String(scopeValue).split(/[,\s]+/);
+  return new Set(rawScopes.map((scope) => String(scope).trim()).filter(Boolean));
+}
+
+function getMissingRequiredScopes(grantedScopes, requiredScopes = READONLY_SCOPES) {
+  return requiredScopes.filter((scope) => !grantedScopes.has(scope));
+}
+
+function validateGrantedScopes(tokenResponse, requiredScopes = READONLY_SCOPES) {
+  const grantedScopes = extractGrantedScopes(tokenResponse);
+  const missingScopes = getMissingRequiredScopes(grantedScopes, requiredScopes);
+  if (missingScopes.length === 0) return;
+
+  if (grantedScopes.size === 0) {
+    throw new Error(
+      "Slack token response に scope が含まれていません。Slack App を再インストールしてから slack-auth で再ログインしてください。"
+    );
+  }
+  throw new Error(
+    `Slack token response に必要な scope が不足しています: ${missingScopes.join(", ")}。Slack App を再インストールしてから slack-auth で再ログインしてください。`
+  );
+}
+
 function base64Url(input) {
   return input
     .toString("base64")
@@ -353,6 +381,7 @@ async function login(options) {
   validateOptions(options);
   const authorization = await waitForAuthorization(options);
   const tokenResponse = await exchangeCodeForToken(options, authorization);
+  validateGrantedScopes(tokenResponse);
   const verification = await verifyTokenAuthorization(options, tokenResponse);
   const record = buildTokenRecord(options, tokenResponse, Date.now(), verification);
   await writeTokenRecord(record);
@@ -412,6 +441,9 @@ module.exports = {
   normalizeTeamIds,
   parseArgs,
   validateOptions,
+  extractGrantedScopes,
+  getMissingRequiredScopes,
+  validateGrantedScopes,
   base64Url,
   createPkcePair,
   buildAuthorizeUrl,
