@@ -23,6 +23,16 @@ function isRefreshRaceError(err) {
   return Boolean(err && ["invalid_refresh_token", "token_expired"].includes(err.slackError));
 }
 
+function buildRefreshReauthError(err) {
+  const slackError = err && err.slackError ? err.slackError : "unknown_error";
+  const reauthError = new Error(
+    `Slack refresh token が期限切れまたは無効です: ${slackError}。slack-auth で再ログインしてください。`
+  );
+  reauthError.slackError = slackError;
+  if (err && err.status) reauthError.status = err.status;
+  return reauthError;
+}
+
 function buildRefreshBody(record) {
   if (!record || !record.client_id) {
     throw new Error("Slack token record に client_id がありません。slack-auth で再ログインしてください。");
@@ -118,6 +128,7 @@ async function getSlackAccessToken(options = {}) {
     if (isRefreshRaceError(err)) {
       const reloadedToken = await reloadFreshTokenAfterRefreshRace(record, options);
       if (reloadedToken) return reloadedToken;
+      throw buildRefreshReauthError(err);
     }
     throw err;
   }
@@ -129,6 +140,7 @@ module.exports = {
   tokenExpiresSoon,
   hasUsableAccessToken,
   isRefreshRaceError,
+  buildRefreshReauthError,
   buildRefreshBody,
   buildRefreshedTokenRecord,
   refreshTokenRecord,
