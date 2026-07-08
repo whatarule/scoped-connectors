@@ -228,25 +228,32 @@ describe("getSlackAccessToken", () => {
     assert.equal(readCount, 2);
   });
 
-  it("競合救済できない refresh 失敗は呼び出し元へ返す", async () => {
-    await assert.rejects(
-      () =>
-        getSlackAccessToken({
-          now: 9_500,
-          refreshWindowMs: 1_000,
-          readTokenRecord: async () => BASE_RECORD,
-          fetchImpl: async () => ({
-            ok: true,
-            async json() {
-              return { ok: false, error: "invalid_refresh_token" };
-            },
+  for (const slackError of ["invalid_refresh_token", "token_expired"]) {
+    it(`競合救済できない ${slackError} は再ログインを促す`, async () => {
+      await assert.rejects(
+        () =>
+          getSlackAccessToken({
+            now: 9_500,
+            refreshWindowMs: 1_000,
+            readTokenRecord: async () => BASE_RECORD,
+            fetchImpl: async () => ({
+              ok: true,
+              async json() {
+                return { ok: false, error: slackError };
+              },
+            }),
           }),
-        }),
-      (err) => {
-        assert.equal(isRefreshRaceError(err), true);
-        assert.equal(err.slackError, "invalid_refresh_token");
-        return true;
-      }
-    );
-  });
+        (err) => {
+          assert.equal(isRefreshRaceError(err), true);
+          assert.equal(err.slackError, slackError);
+          assert.match(err.message, /再ログイン/);
+          assert.match(err.message, /slack-auth/);
+          assert.match(err.message, new RegExp(slackError));
+          assert.doesNotMatch(err.message, /xoxe-refresh-old/);
+          assert.doesNotMatch(err.message, /xoxe\.xoxp-old/);
+          return true;
+        }
+      );
+    });
+  }
 });

@@ -45,37 +45,86 @@ describe("formatExpiresAt", () => {
 });
 
 describe("status", () => {
-  it("token record がない場合は未保存として表示する", async () => {
+  it("token record がない場合は未保存として表示し、live check は呼ばない", async () => {
     const status = await getStatus({
       describeTokenStore: () => "test-store",
       readTokenRecord: async () => null,
+      getSlackAccessToken: async () => {
+        assert.fail("live check should not be called without a token record");
+      },
     });
 
     assert.deepEqual(status, { exists: false, store: "test-store" });
     assert.equal(formatStatus(status), "Slack token は保存されていません。\nstore: test-store\n");
   });
 
-  it("token 値を出さずに保存メタデータだけ表示する", async () => {
+  it("auth.test で live 確認し、token 値を出さずに team / user を表示する", async () => {
+    const calls = [];
     const status = await getStatus({
       describeTokenStore: () => "test-store",
-      readTokenRecord: async () => ({
-        access_token: "xoxp-secret",
-        refresh_token: "xoxe-refresh-secret",
-        team_id: "T123",
-        team_name: "Example",
-        authed_user_id: "U123",
-        scope: "channels:read",
-        expires_at: 1000,
-      }),
+      readTokenRecord: async () => {
+        calls.push({ fn: "readTokenRecord" });
+        return {
+          access_token: "xoxp-secret",
+          refresh_token: "xoxe-refresh-secret",
+          team_id: "TSTORED",
+          team_name: "Stored",
+          authed_user_id: "USTORED",
+          scope: "channels:read",
+          expires_at: 1000,
+        };
+      },
+      getSlackAccessToken: async () => {
+        calls.push({ fn: "getSlackAccessToken" });
+        return "xoxp-secret";
+      },
+      fetchSlackApiWithToken: async (method, accessToken, params) => {
+        calls.push({ fn: "fetchSlackApiWithToken", method, accessToken, params });
+        return {
+          ok: true,
+          team: "Live",
+          team_id: "TLIVE",
+          user_id: "ULIVE",
+          access_token: "xoxp-response-secret",
+        };
+      },
     });
     const output = formatStatus(status);
 
+    assert.deepEqual(calls, [
+      { fn: "readTokenRecord" },
+      { fn: "getSlackAccessToken" },
+      { fn: "fetchSlackApiWithToken", method: "auth.test", accessToken: "xoxp-secret", params: {} },
+      { fn: "readTokenRecord" },
+    ]);
     assert.match(output, /Slack token は保存されています/);
-    assert.match(output, /workspace: Example/);
-    assert.match(output, /team_id: T123/);
-    assert.match(output, /user: U123/);
+    assert.match(output, /live_check: auth\.test ok/);
+    assert.match(output, /workspace: Live/);
+    assert.match(output, /team_id: TLIVE/);
+    assert.match(output, /user: ULIVE/);
     assert.doesNotMatch(output, /xoxp-secret/);
+    assert.doesNotMatch(output, /xoxp-response-secret/);
     assert.doesNotMatch(output, /xoxe-refresh-secret/);
+  });
+
+  it("record はあるが access token を解決できなければ再ログインを促す", async () => {
+    await assert.rejects(
+      () =>
+        getStatus({
+          describeTokenStore: () => "test-store",
+          readTokenRecord: async () => ({
+            team_id: "T123",
+            authed_user_id: "U123",
+            scope: "channels:read",
+            expires_at: 1000,
+          }),
+          getSlackAccessToken: async () => "",
+          fetchSlackApiWithToken: async () => {
+            assert.fail("auth.test should not be called without an access token");
+          },
+        }),
+      /再ログイン/
+    );
   });
 });
 

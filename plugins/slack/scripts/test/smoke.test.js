@@ -11,6 +11,7 @@ const {
   resolveTargetChannel,
   redactSecrets,
   truncateText,
+  buildAuthTestStep,
   runSmoke,
   formatSmokeReport,
 } = require("../smoke");
@@ -104,6 +105,7 @@ describe("runSmoke", () => {
         workspace: "Example",
         teamId: "T123",
         user: "U123",
+        liveCheck: "auth.test ok",
         expiresAt: "2030-01-01T00:00:00.000Z",
       }),
       runAuth: async () => {
@@ -115,9 +117,6 @@ describe("runSmoke", () => {
       },
       fetchSlackApi: async (endpoint, params = {}) => {
         calls.push({ fn: "fetchSlackApi", endpoint, params });
-        if (endpoint === "auth.test") {
-          return { ok: true, team: "Example", team_id: "T123", user_id: "U123", access_token: "xoxp-hidden" };
-        }
         if (endpoint === "users.list") {
           return { ok: true, members: [{ id: "U1", deleted: false }, { id: "U2", deleted: true }] };
         }
@@ -156,7 +155,7 @@ describe("runSmoke", () => {
     assert.equal(report.ok, true);
     assert.deepEqual(
       deps.calls.map((call) => call.fn || call.endpoint),
-      ["fetchSlackApi", "fetchAllPages", "fetchSlackApi", "fetchSlackApi", "fetchSlackApi", "searchMessages"]
+      ["fetchAllPages", "fetchSlackApi", "fetchSlackApi", "fetchSlackApi", "searchMessages"]
     );
     assert.match(output, /Slack smoke result: PASS/);
     assert.match(output, /OK auth\.test/);
@@ -199,11 +198,12 @@ describe("runSmoke", () => {
         return {
           exists: true,
           store: "test-store",
-          workspace: "Example",
-          teamId: "T123",
-          user: "U123",
-          expiresAt: "2030-01-01T00:00:00.000Z",
-        };
+        workspace: "Example",
+        teamId: "T123",
+        user: "U123",
+        liveCheck: "auth.test ok",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      };
       },
     });
 
@@ -211,5 +211,43 @@ describe("runSmoke", () => {
     assert.equal(statusCalls, 2);
     assert.equal(report.steps[0].name, "login");
     assert.equal(deps.calls[0].fn, "runAuth");
+  });
+
+  it("status が live auth.test 未確認なら失敗する", async () => {
+    const deps = createDeps({
+      getStatus: async () => ({
+        exists: true,
+        store: "test-store",
+        workspace: "Example",
+        teamId: "T123",
+        user: "U123",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+      }),
+    });
+
+    await assert.rejects(
+      () => runSmoke({ skipUsers: true, skipHistory: true, skipSearch: true }, deps),
+      /auth\.test/
+    );
+  });
+});
+
+describe("buildAuthTestStep", () => {
+  it("status の live auth.test 結果から表示用 step を作る", () => {
+    assert.deepEqual(
+      buildAuthTestStep({
+        liveCheck: "auth.test ok",
+        workspace: "Example",
+        teamId: "T123",
+        user: "U123",
+      }),
+      {
+        name: "auth-test",
+        ok: true,
+        team: "Example",
+        teamId: "T123",
+        userId: "U123",
+      }
+    );
   });
 });

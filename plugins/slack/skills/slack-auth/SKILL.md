@@ -64,5 +64,5 @@ token record は macOS Keychain に保存します。file store と token 用環
 ## 注意
 
 token 値は出力しないでください。
-`status` は token 値を表示せず、workspace、team_id、user、scope、有効期限だけを表示します。
+`status` は保存済み token record を確認したうえで `auth.test` を呼び、token 値を表示せず、workspace、team_id、user、scope、有効期限だけを表示します。
 認可に失敗した場合は、Slack App manifest の `pkce_enabled`、`redirect_urls`、`token_rotation_enabled`、Client ID、`allowed_team_ids` を確認してください。

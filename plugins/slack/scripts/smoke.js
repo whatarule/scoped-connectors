@@ -159,6 +159,19 @@ async function ensureStoredToken(options, deps) {
   return { status, loginStarted: true };
 }
 
+function buildAuthTestStep(status) {
+  if (status.liveCheck !== "auth.test ok") {
+    throw new Error("slack-auth status の live auth.test 確認が完了していません。");
+  }
+  return {
+    name: "auth-test",
+    ok: true,
+    team: status.workspace || "unknown",
+    teamId: status.teamId || "unknown",
+    userId: status.user || "unknown",
+  };
+}
+
 async function runSmoke(options = {}, deps = {}) {
   const smokeOptions = { ...parseArgs([]), ...options, help: false };
   const smokeDeps = {
@@ -183,17 +196,11 @@ async function runSmoke(options = {}, deps = {}) {
     workspace: status.workspace,
     teamId: status.teamId,
     user: status.user,
+    liveCheck: status.liveCheck,
     expiresAt: status.expiresAt,
   });
 
-  const auth = await smokeDeps.fetchSlackApi("auth.test");
-  steps.push({
-    name: "auth-test",
-    ok: true,
-    team: auth.team || "unknown",
-    teamId: auth.team_id || "unknown",
-    userId: auth.user_id || "unknown",
-  });
+  steps.push(buildAuthTestStep(status));
 
   const channels = await smokeDeps.fetchAllPages(
     "conversations.list",
@@ -330,6 +337,7 @@ module.exports = {
   summarizeHistoryMessage,
   summarizeSearchResult,
   ensureStoredToken,
+  buildAuthTestStep,
   runSmoke,
   formatSmokeReport,
 };

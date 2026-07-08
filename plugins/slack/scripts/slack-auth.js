@@ -2,9 +2,11 @@
 
 const {
   USAGE: LOGIN_USAGE,
+  fetchSlackApiWithToken,
   login: oauthLogin,
   parseArgs: parseLoginArgs,
 } = require("./oauth-login");
+const { getSlackAccessToken } = require("./auth");
 const {
   deleteTokenRecord,
   describeTokenStore,
@@ -20,7 +22,7 @@ const USAGE = [
   "使い方: slack-auth [login|status|clear] [options]",
   "",
   "引数なし、または login: Slack OAuth PKCE でログインして token を OS secure store に保存します。",
-  "status: 保存済み token record の有無とメタデータを表示します。token 値は表示しません。",
+  "status: 保存済み token record の有無を確認し、auth.test で live 状態を確認します。token 値は表示しません。",
   "clear: OS secure store から保存済み Slack token record を削除します。",
   "",
   "login options:",
@@ -64,19 +66,39 @@ function summarizeRecord(record, storeDescription) {
     user: record.authed_user_id || "unknown",
     scope: record.scope || "unknown",
     expiresAt: formatExpiresAt(record.expires_at),
+    liveCheck: "",
+  };
+}
+
+function applyLiveAuth(status, auth = {}) {
+  return {
+    ...status,
+    workspace: auth.team || status.workspace,
+    teamId: auth.team_id || status.teamId,
+    user: auth.user_id || auth.user || status.user,
+    liveCheck: "auth.test ok",
   };
 }
 
 async function getStatus(options = {}) {
   const readRecord = options.readTokenRecord || readTokenRecord;
   const describeStore = options.describeTokenStore || describeTokenStore;
+  const getAccessToken = options.getSlackAccessToken || getSlackAccessToken;
+  const fetchApiWithToken = options.fetchSlackApiWithToken || fetchSlackApiWithToken;
   const tokenStoreOptions = options.tokenStoreOptions || {};
   const storeDescription = describeStore(tokenStoreOptions);
   const record = await readRecord(tokenStoreOptions);
   if (!record) {
     return { exists: false, store: storeDescription };
   }
-  return summarizeRecord(record, storeDescription);
+
+  const accessToken = await getAccessToken(options.accessTokenOptions || {});
+  if (!accessToken) {
+    throw new Error("Slack token record は保存されていますが access token を確認できません。slack-auth で再ログインしてください。");
+  }
+  const auth = await fetchApiWithToken("auth.test", accessToken, {});
+  const latestRecord = (await readRecord(tokenStoreOptions)) || record;
+  return applyLiveAuth(summarizeRecord(latestRecord, storeDescription), auth);
 }
 
 function formatStatus(status) {
@@ -86,6 +108,7 @@ function formatStatus(status) {
   return [
     "Slack token は保存されています。",
     `store: ${status.store}`,
+    status.liveCheck ? `live_check: ${status.liveCheck}` : "",
     `workspace: ${status.workspace}`,
     `team_id: ${status.teamId}`,
     `user: ${status.user}`,
@@ -177,6 +200,7 @@ module.exports = {
   parseAuthArgs,
   formatExpiresAt,
   summarizeRecord,
+  applyLiveAuth,
   getStatus,
   formatStatus,
   clearToken,

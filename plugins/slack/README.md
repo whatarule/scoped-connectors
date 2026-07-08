@@ -15,7 +15,7 @@ Slack のメッセージを取得・検索するプラグインです。
 |---|---|
 | `/slack-auth` | Slack OAuth PKCE でログイン（引数なしは login） |
 | `/slack-auth login` | Slack OAuth PKCE でログイン（明示形） |
-| `/slack-auth status` | 保存済み Slack token record の状態確認（token 値は非表示） |
+| `/slack-auth status` | 保存済み Slack token record と `auth.test` live 状態の確認（token 値は非表示） |
 | `/slack-auth clear` | OS secure store の保存済み Slack token record を削除 |
 | `/slack-channels` | チャンネル一覧を表示 |
 | `/slack-users` | ユーザー・グループキャッシュを更新 |
@@ -56,7 +56,7 @@ token 保存前に `auth.test` の `team_id` を allowlist と照合し、一致
 既定の allowlist は対象 workspace の team ID `T06B7BCTU` です。
 guest user（`is_restricted` / `is_ultra_restricted`）の token は常に保存しません。
 
-保存状態は `/slack-auth status`、保存済み token record の削除は `/slack-auth clear` で確認・実行できます。
+保存状態と Slack API 上の live 状態は `/slack-auth status`、保存済み token record の削除は `/slack-auth clear` で確認・実行できます。
 スクリプトを直接実行する場合は `node plugins/slack/scripts/slack-auth.js status` と `node plugins/slack/scripts/slack-auth.js clear` を使います。
 `clear` は Slack 側の token revoke ではなく、ローカルの OS secure store から保存 token record を削除します。
 
