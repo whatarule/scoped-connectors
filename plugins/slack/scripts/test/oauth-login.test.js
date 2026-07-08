@@ -19,6 +19,7 @@ const {
   base64Url,
   createPkcePair,
   buildAuthorizeUrl,
+  validateAuthorizationCallback,
   exchangeCodeForToken,
   fetchSlackApiWithToken,
   verifyTokenAuthorization,
@@ -210,6 +211,67 @@ describe("buildAuthorizeUrl", () => {
     assert.equal(url.searchParams.get("code_challenge"), "challenge");
     assert.equal(url.searchParams.get("code_challenge_method"), "S256");
     assert.equal(url.searchParams.get("state"), "state");
+  });
+});
+
+describe("validateAuthorizationCallback", () => {
+  it("code と state が一致すれば code を返す", () => {
+    assert.equal(
+      validateAuthorizationCallback({
+        code: "code",
+        returnedState: "expected-state",
+        expectedState: "expected-state",
+      }),
+      "code"
+    );
+  });
+
+  it("Slack error callback は拒否する", () => {
+    assert.throws(
+      () =>
+        validateAuthorizationCallback({
+          error: "access_denied",
+          code: "code",
+          returnedState: "expected-state",
+          expectedState: "expected-state",
+        }),
+      (err) => {
+        assert.match(err.message, /access_denied/);
+        assert.equal(err.responseBody, "Slack authorization failed. You can close this tab.");
+        return true;
+      }
+    );
+  });
+
+  it("code がなければ拒否する", () => {
+    assert.throws(
+      () =>
+        validateAuthorizationCallback({
+          returnedState: "expected-state",
+          expectedState: "expected-state",
+        }),
+      (err) => {
+        assert.match(err.message, /認可レスポンスが不正/);
+        assert.equal(err.responseBody, "Invalid authorization response. You can close this tab.");
+        return true;
+      }
+    );
+  });
+
+  it("state が一致しなければ拒否する", () => {
+    assert.throws(
+      () =>
+        validateAuthorizationCallback({
+          code: "code",
+          returnedState: "attacker-state",
+          expectedState: "expected-state",
+        }),
+      (err) => {
+        assert.match(err.message, /認可レスポンスが不正/);
+        assert.equal(err.responseBody, "Invalid authorization response. You can close this tab.");
+        return true;
+      }
+    );
   });
 });
 

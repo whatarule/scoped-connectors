@@ -210,6 +210,20 @@ function createCallbackServer(redirectUri) {
   });
 }
 
+function validateAuthorizationCallback({ error = "", code = "", returnedState = "", expectedState = "" }) {
+  if (error) {
+    const err = new Error(`認可が失敗しました: ${error}`);
+    err.responseBody = "Slack authorization failed. You can close this tab.";
+    throw err;
+  }
+  if (!code || returnedState !== expectedState) {
+    const err = new Error("認可レスポンスが不正です。");
+    err.responseBody = "Invalid authorization response. You can close this tab.";
+    throw err;
+  }
+  return code;
+}
+
 async function waitForAuthorization(options) {
   const pkce = createPkcePair();
   const state = createState();
@@ -243,25 +257,26 @@ async function waitForAuthorization(options) {
       const returnedState = url.searchParams.get("state");
 
       clearTimeout(timeout);
-      if (error) {
+      let authorizedCode;
+      try {
+        authorizedCode = validateAuthorizationCallback({
+          error,
+          code,
+          returnedState,
+          expectedState: state,
+        });
+      } catch (err) {
         res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Slack authorization failed. You can close this tab.");
+        res.end(err.responseBody || "Invalid authorization response. You can close this tab.");
         server.close();
-        reject(new Error(`認可が失敗しました: ${error}`));
-        return;
-      }
-      if (!code || returnedState !== state) {
-        res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Invalid authorization response. You can close this tab.");
-        server.close();
-        reject(new Error("認可レスポンスが不正です。"));
+        reject(err);
         return;
       }
 
       res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Slack authorization completed. You can close this tab.");
       server.close();
-      resolve({ code, codeVerifier: pkce.verifier, redirectUri: options.redirectUri });
+      resolve({ code: authorizedCode, codeVerifier: pkce.verifier, redirectUri: options.redirectUri });
     });
   });
 }
@@ -447,6 +462,7 @@ module.exports = {
   base64Url,
   createPkcePair,
   buildAuthorizeUrl,
+  validateAuthorizationCallback,
   exchangeCodeForToken,
   fetchSlackApiWithToken,
   verifyTokenAuthorization,
