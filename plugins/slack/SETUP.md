@@ -56,6 +56,27 @@ Keychain を使う Slack 系コマンドは sandbox 外実行が必要です。
 初回承認時に prefix rule を保存すると、同じ script の次回以降の実行で承認を省略しやすくなります。
 対象 script は `slack-auth.js`、`channels.js`、`users.js`、`history.js`、`thread.js`、`search.js` です。
 
+## 参考: 実 Slack smoke
+
+OAuth、Keychain 保存、実 Slack API の最小確認には `smoke.js` を使います。
+この script も Keychain を読むため sandbox 外で実行してください。
+
+```sh
+node plugins/slack/scripts/smoke.js --channel general --query test
+```
+
+token が未保存の場合は、先に `/slack-auth` または次のコマンドでログインします。
+
+```sh
+node plugins/slack/scripts/slack-auth.js
+```
+
+`smoke.js --login` を指定すると、token 未保存時に同じ login flow を開始します。
+Slack の許可画面はブラウザで手動承認してください。
+
+既定では Slack メッセージ本文は表示せず、件数とメタデータだけを表示します。
+本文も短く確認したい場合だけ `--show-text` を指定します。Slack token らしい文字列は出力時に伏せます。
+
 ## 参考: プラグインの更新
 
 ### Claude Code
