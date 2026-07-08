@@ -1,6 +1,34 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { formatTs, checkOk } = require("../common");
+const { formatTs, checkOk, resolveSlackToken } = require("../common");
+
+describe("resolveSlackToken", () => {
+  it("Keychain token store の access token を返す", async () => {
+    const token = await resolveSlackToken({
+      now: 1_000,
+      refreshWindowMs: 1_000,
+      readTokenRecord: async () => ({ access_token: "xoxe-store", expires_at: 60_000 }),
+    });
+
+    assert.equal(token, "xoxe-store");
+  });
+
+  it("token store が空なら空文字を返す", async () => {
+    const token = await resolveSlackToken({
+      readTokenRecord: async () => null,
+    });
+
+    assert.equal(token, "");
+  });
+
+  it("token store に access_token がなければ空文字を返す", async () => {
+    const token = await resolveSlackToken({
+      readTokenRecord: async () => ({ refresh_token: "xoxe-refresh" }),
+    });
+
+    assert.equal(token, "");
+  });
+});
 
 describe("formatTs", () => {
   it("Slack ts を YYYY-MM-DD HH:MM 形式に変換する", () => {

@@ -4,6 +4,9 @@
     "description": "Claude Code から Slack メッセージを読み取るためのアプリ（読み取り専用）"
   },
   "oauth_config": {
+    "redirect_urls": [
+      "http://localhost:53682/slack/oauth/callback"
+    ],
     "scopes": {
       "user": [
         "channels:history",
@@ -12,6 +15,10 @@
         "users:read",
         "usergroups:read"
       ]
-    }
+    },
+    "pkce_enabled": true
+  },
+  "settings": {
+    "token_rotation_enabled": true
   }
 }

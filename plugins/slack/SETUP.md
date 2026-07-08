@@ -10,67 +10,72 @@ claude plugin install slack@scoped-connectors
 # Codex セッション内で /plugins から slack をインストール
 ```
 
-## 2. Slack App の作成
+## 2. Slack OAuth PKCE でログイン
 
-1. [api.slack.com/apps](https://api.slack.com/apps) にアクセス
-2. 「Create New App」→「From a manifest」を選択
-3. ワークスペースを選択
-4. 本リポジトリの [`slack-app-manifest.json`](slack-app-manifest.json) の内容を貼り付けて作成
+このプラグインのスキル `/slack-auth` または `/slack-auth login` を実行します。
+`/slack-auth` は引数なしで login として動作します。
+共有 Slack App の Client ID はプラグインに同梱されています。
 
-manifest により以下の読み取り専用スコープが設定されます:
+スクリプトを直接実行する場合:
 
-| スコープ | 用途 |
-|---|---|
-| `channels:read` | パブリックチャンネルの一覧取得 |
-| `channels:history` | チャンネルのメッセージ履歴取得 |
-| `search:read.public` | Real-time Search API でのパブリックチャンネル検索 |
-| `users:read` | ユーザー名の表示 |
-| `usergroups:read` | ユーザーグループ名の表示 |
+```sh
+node plugins/slack/scripts/slack-auth.js
+# または
+node plugins/slack/scripts/slack-auth.js login
+```
 
-このプラグインの検索は `search:read.public` scope の Real-time Search API で実装しています。
-認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、`search:read` は付与しません。
+表示された URL をブラウザで開き、Slack の読み取り権限を許可してください。
 
-## 3. ワークスペースにインストールして User Token を取得
+認証方式と token 保存の仕様は [README](README.md#参考-認証と-token-保存) を参照してください。
 
-1. 作成した App の「Install App」ページからワークスペースにインストール
-2. インストール後に表示される **User OAuth Token**（`xoxp-` で始まるトークン）をコピー
+## 3. コマンド実行許可の設定
 
-既存 App に scope を追加した場合、管理側で承認済みになった後も、必ず「Install App」ページから再インストールしてください。
-再インストールしないと、Slack API の `provided` scope に新しい権限が反映されないことがあります。
-
-## 4. 環境変数の設定
+このプラグインは token の保存・読み取りに OS secure store を使います。
+Claude Code / Codex では OS secure store の保存・読み取りが sandbox 内で失敗します。
+このプラグインの Slack 系 skill は sandbox 外でスクリプトを実行する前提です。
+初回実行時に sandbox 外実行の承認を求められたら許可してください。
 
 ### Claude Code の場合
 
-`~/.claude/settings.json` に `SLACK_TOKEN` を設定します。
+Keychain を使う Slack 系コマンドは sandbox 外実行が必要です。
+一時的に実行するだけなら Bash tool の `dangerouslyDisableSandbox` でも回避できます。
+継続利用で承認を省略したい場合だけ、プロジェクトまたはユーザーの設定ファイルに次の2つを設定してください。
 
-```json
-{
-  "env": {
-    "SLACK_TOKEN": "xoxp-xxxx-xxxx-xxxx-xxxx"
-  }
-}
-```
+- `sandbox.excludedCommands`: 登録したコマンドは常に sandbox 外で実行されます。sandbox 内で一度失敗してから再試行する無駄がなくなります。
+- `permissions.allow`: sandbox 外実行も通常の permission フローを通るため、`Bash(...)` ルールを併せて設定すると承認プロンプトを省略できます。
+
+どちらのパターンも、このプラグインの実際のインストールパスを自分で確認して絶対パスで書いてください。
+インストールパスは `~/.claude/plugins/installed_plugins.json` の `installPath` で確認できます。バージョンのディレクトリ部分だけ `*` にします。
+`*/plugins/slack/scripts/*` のような前方ワイルドカードは、同名のディレクトリ構造を持つ任意のリポジトリのスクリプトまで sandbox 外・承認なしで実行できてしまうため使わないでください。
 
 ### Codex の場合
 
-シェルの環境変数として設定します。
+Keychain を使う Slack 系コマンドは sandbox 外実行が必要です。
+各 `SKILL.md` は `sandbox_permissions: "require_escalated"` と script ごとの `prefix_rule` を使うように記載しています。
+
+初回承認時に prefix rule を保存すると、同じ script の次回以降の実行で承認を省略しやすくなります。
+対象 script は `slack-auth.js`、`channels.js`、`users.js`、`history.js`、`thread.js`、`search.js` です。
+
+## 参考: 実 Slack smoke
+
+OAuth、Keychain 保存、実 Slack API の最小確認には `smoke.js` を使います。
+この script も Keychain を読むため sandbox 外で実行してください。
 
 ```sh
-export SLACK_TOKEN=xoxp-xxxx-xxxx-xxxx-xxxx
+node plugins/slack/scripts/smoke.js --channel general --query test
 ```
 
-永続化するには `.zshrc` / `.bashrc` に追加してください。
+token が未保存の場合は、先に `/slack-auth` または次のコマンドでログインします。
 
-> **注意**: シェル環境変数は全プロセスから参照可能です。Claude Code の settings.json はツール内に閉じているため、セキュリティ上はそちらが望ましいです。
+```sh
+node plugins/slack/scripts/slack-auth.js
+```
 
-## 5. コマンド実行許可の設定（Claude Code のみ・任意）
+`smoke.js --login` を指定すると、token 未保存時に同じ login flow を開始します。
+Slack の許可画面はブラウザで手動承認してください。
 
-初回実行時に毎回許可を求められるのが煩わしい場合、プロジェクトまたはユーザーの設定ファイルに許可設定を追加してください。
-
-設定例は [`verification/.claude/settings.json`](../../verification/.claude/settings.json) を参照してください。
-
-Codex の場合は `codex --full-auto` で実行すれば個別の許可設定は不要です。
+既定では Slack メッセージ本文は表示せず、件数とメタデータだけを表示します。
+本文も短く確認したい場合だけ `--show-text` を指定します。Slack token らしい文字列は出力時に伏せます。
 
 ## 参考: プラグインの更新
 
@@ -107,14 +112,22 @@ claude plugin uninstall slack@scoped-connectors
 # Codex セッション内で /plugins からプラグインをアンインストール
 ```
 
-## 参考: Slack App の削除
+## 参考: 別 Slack App / allowlist の上書き
 
-作成した Slack App 自体を削除する場合は、Slack の App 管理画面から操作します。
+別 Slack App を使う場合だけ、`~/.config/scoped-connectors/slack/config.json` で上書きします。
+Client ID と team ID は公開識別子であり、client secret ではありません。
 
-1. [api.slack.com/apps](https://api.slack.com/apps) にアクセス
-2. 削除したい App を選択
-3. 左メニューの「Basic Information」を開く
-4. ページ下部の「Delete App」から削除する
+```json
+{
+  "client_id": "123.456",
+  "redirect_uri": "http://localhost:53682/slack/oauth/callback",
+  "allowed_team_ids": ["T12345678"]
+}
+```
 
-削除すると、その App から発行された OAuth Token は利用できなくなります。
-権限を見直して作り直す場合は、削除後に本手順の「Slack App の作成」からやり直してください。
+環境変数 `SLACK_CLIENT_ID`、`SLACK_ALLOWED_TEAM_IDS` でも指定できます。
+`SLACK_ALLOWED_TEAM_IDS` はカンマ区切りです。
+guest user（`users.info` の `is_restricted` / `is_ultra_restricted` が true のユーザー）の token は常に保存を拒否します。この判定は設定では変更できません。
+
+既存 App に scope を追加した場合、管理側で承認済みになった後も、必ず「Install App」ページから再インストールしてください。
+再インストールしないと、Slack API の `provided` scope に新しい権限が反映されないことがあります。

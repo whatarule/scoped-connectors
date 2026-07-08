@@ -1,5 +1,0 @@
-{
-  "permissions": {
-    "allow": ["Skill(slack)", "Bash(node */plugins/slack/scripts/*)"]
-  }
-}

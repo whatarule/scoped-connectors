@@ -13,6 +13,10 @@ Slack のメッセージを取得・検索するプラグインです。
 
 | コマンド | 説明 |
 |---|---|
+| `/slack-auth` | Slack OAuth PKCE でログイン（引数なしは login） |
+| `/slack-auth login` | Slack OAuth PKCE でログイン（明示形） |
+| `/slack-auth status` | 保存済み Slack token record と `auth.test` live 状態の確認（token 値は非表示） |
+| `/slack-auth clear` | OS secure store の保存済み Slack token record を削除 |
 | `/slack-channels` | チャンネル一覧を表示 |
 | `/slack-users` | ユーザー・グループキャッシュを更新 |
 | `/slack-history <channel> [limit]` | 指定チャンネルのメッセージを取得 |
@@ -39,3 +43,39 @@ generalの最近のメッセージ見せて
 ```
 $slack generalの最近のメッセージを5件見せて
 ```
+
+## 参考: 認証と token 保存
+
+Slack App manifest では PKCE と token rotation を有効にしています。
+このプラグインは PKCE 前提のため `client_secret` は設定・送信しません。
+
+token record は macOS Keychain に保存します。
+file store と token 用環境変数は使いません。
+
+token 保存前に `auth.test` の `team_id` を allowlist と照合し、一致しない token は保存しません。
+既定の allowlist は対象 workspace の team ID `T06B7BCTU` です。
+guest user（`is_restricted` / `is_ultra_restricted`）の token は常に保存しません。
+
+保存状態と Slack API 上の live 状態は `/slack-auth status`、保存済み token record の削除は `/slack-auth clear` で確認・実行できます。
+スクリプトを直接実行する場合は `node plugins/slack/scripts/slack-auth.js status` と `node plugins/slack/scripts/slack-auth.js clear` を使います。
+`clear` は Slack 側の token revoke ではなく、ローカルの OS secure store から保存 token record を削除します。
+
+## 参考: 共有 Slack App
+
+このプラグインは共有 Slack App の Client ID を同梱しています。
+通常の利用者は Slack App を作成しません。
+
+共有 Slack App は Public Distribution を有効化せず、対象 workspace 用の App として管理します。
+
+共有 Slack App には以下の読み取り専用スコープが設定されています:
+
+| スコープ | 用途 |
+|---|---|
+| `channels:read` | パブリックチャンネルの一覧取得 |
+| `channels:history` | チャンネルのメッセージ履歴取得 |
+| `search:read.public` | Real-time Search API でのパブリックチャンネル検索 |
+| `users:read` | ユーザー名の表示 |
+| `usergroups:read` | ユーザーグループ名の表示 |
+
+このプラグインの検索は `search:read.public` scope の Real-time Search API で実装しています。
+認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、`search:read` は付与しません。
