@@ -37,7 +37,7 @@ const USAGE = [
   `別 App を使う場合は ${DEFAULT_CONFIG_PATH} の client_id、SLACK_CLIENT_ID、または --client-id で上書きできます。`,
   "token 保存前に Slack workspace の team_id を allowed_team_ids と照合します。",
   "guest user (is_restricted / is_ultra_restricted) の token は保存できません。",
-  "Slack token は macOS Keychain に保存します。",
+  "Slack token は macOS Keychain または Windows Credential Manager に保存します。",
   "",
 ].join("\n");
 

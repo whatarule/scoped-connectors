@@ -85,7 +85,7 @@ describe("buildRefreshedTokenRecord", () => {
 });
 
 describe("refreshTokenRecord", () => {
-  it("oauth.v2.user.access で token を refresh して Keychain record を上書きする", async () => {
+  it("oauth.v2.user.access で token を refresh して OS secure store record を上書きする", async () => {
     let captured;
     const writes = [];
     const refreshed = await refreshTokenRecord(BASE_RECORD, {
@@ -201,7 +201,7 @@ describe("getSlackAccessToken", () => {
     );
   });
 
-  it("refresh token 競合時は Keychain を再読込して別プロセス保存済み token を使う", async () => {
+  it("refresh token 競合時は OS secure store を再読込して別プロセス保存済み token を使う", async () => {
     let readCount = 0;
     const token = await getSlackAccessToken({
       now: 9_500,

@@ -20,7 +20,7 @@ async function requireSlackToken() {
   process.stderr.write(
     "Slack token が見つかりません。\n" +
       "slack-auth でログインして OS secure store に token を保存してください。\n" +
-      "Codex では Keychain を読むために sandbox 外実行が必要です。\n"
+      "Codex では Keychain / Credential Manager を読むために sandbox 外実行が必要です。\n"
   );
   process.exit(1);
 }

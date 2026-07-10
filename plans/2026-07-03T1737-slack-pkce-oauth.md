@@ -12,7 +12,7 @@ Google Drive 側はすでに自前の browser OAuth スクリプトを持ち、l
 PKCE S256、access token refresh を実装している。Slack 側も認証フローは同じ方向でよい。
 
 ただし Issue の主目的は「長寿命秘密のローカル静的配置を廃する」ことなので、Slack 側では
-Drive と同じ token JSON 既定ではなく、OS secure store（macOS Keychain）に保存する。
+Drive と同じ token JSON 既定ではなく、OS secure store（macOS Keychain / Windows Credential Manager）に保存する。
 file store と token 用環境変数 fallback は使わない。
 
 ## 方針
@@ -210,7 +210,7 @@ PKCE / redirect / token rotation を追加する。
 ## OS secure store 方針
 
 Keeper は標準実装に含めない。
-初期実装は macOS Keychain に限定する。
+初期実装は macOS Keychain と Windows Credential Manager に限定する。
 
 ### store interface
 
@@ -230,10 +230,11 @@ account:
 - token record 内には `team_id` / `team_name` / `authed_user_id` を保存する。
 - 将来の複数 workspace 対応では config の account 設定または `--account` を追加する。
 
-service / account name:
+service / target name:
 
 - service: `scoped-connectors/slack`
 - account: `default`
+- Windows target: `scoped-connectors/slack/default`
 
 保存 payload:
 
@@ -269,18 +270,35 @@ macOS:
 - 実装時はまず `execFile` で shell 展開を避け、token をログに出さない。
 - argv 露出が許容できない場合は、macOS 用 helper を別途検討する。
 
+Windows:
+
+- Windows native Claude Code では Windows Credential Manager を使う。
+- `windows-credential.ps1` から `CredReadW` / `CredWriteW` / `CredDeleteW` を呼び出す。
+- token record JSON はコマンド引数ではなく stdin で helper に渡す。
+- target: `scoped-connectors/slack/default`
+
+WSL:
+
+- WSL 2 上で Claude Code を起動した場合、Node の `process.platform` は `linux` になるが、利用者の実体は Windows ユーザーである。
+- WSL 2 では Linux file store や token 用環境変数 fallback は使わず、Windows Credential Manager にブリッジする。
+- 判定は `/proc/version`、`WSL_INTEROP`、`WSL_DISTRO_NAME` のいずれかで WSL を検出する。
+- WSL から `powershell.exe` を呼び、repo 内の `windows-credential.ps1` を Windows path に変換して実行する。
+- path 変換には `wslpath -w <helper.ps1>` を使い、利用できない場合は分かりやすく未対応エラーにする。
+- 読み書き対象の target / username は Windows native と同じ `scoped-connectors/slack/default` / `default` にする。
+- これにより、Windows native Claude Code と WSL Claude Code は同じ Windows Credential Manager の token record を共有できる。
+
 その他:
 
-- macOS 以外では初期実装は未対応として明示的に失敗する。
+- 純粋な Linux では初期実装は未対応として明示的に失敗する。
 - file store と token 用環境変数 fallback は実装しない。
 
 将来:
 
-- macOS 以外の OS backend は必要になった時点で追加する。
+- Linux Secret Service / KWallet backend は必要になった時点で追加する。
 
 ## sandbox 対応
 
-OS secure store（Keychain）は Claude Code / Codex の sandbox 内から読み書きできない。
+OS secure store（Keychain / Credential Manager）は Claude Code / Codex の sandbox 内から読み書きできない。
 Slack 系 script は sandbox 外での実行を前提とし、各 SKILL.md に共通の「sandbox 外での実行」セクションを設けて
 Claude Code / Codex それぞれの手順を記載する。
 
@@ -358,5 +376,5 @@ Claude Code / Codex それぞれの手順を記載する。
 - 固定 localhost port が占有されている場合の UX。
 - Slack の localhost redirect 登録が port 単位でどこまで柔軟かは実 Slack App で確認する。
 - token response の user token フィールド位置は Slack の実レスポンスで確認する。`authed_user` 優先、top-level fallback で実装する。
-- Linux / WSL は初期実装で未対応のため、エラー表示を分かりやすくする。
+- 純粋な Linux は初期実装で未対応のため、エラー表示を分かりやすくする。
 - refresh token が 30 日で期限切れになるため、期限切れ時は `/slack-auth` を促す。

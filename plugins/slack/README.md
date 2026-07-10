@@ -49,7 +49,8 @@ $slack generalの最近のメッセージを5件見せて
 Slack App manifest では PKCE と token rotation を有効にしています。
 このプラグインは PKCE 前提のため `client_secret` は設定・送信しません。
 
-token record は macOS Keychain に保存します。
+token record は macOS Keychain または Windows Credential Manager に保存します。
+Windows native と WSL では同じ Windows Credential Manager target `scoped-connectors/slack/default` を使います。
 file store と token 用環境変数は使いません。
 
 token 保存前に `auth.test` の `team_id` を allowlist と照合し、一致しない token は保存しません。
