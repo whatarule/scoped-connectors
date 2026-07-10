@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const { formatTs, checkOk, resolveSlackToken } = require("../common");
 
 describe("resolveSlackToken", () => {
-  it("Keychain token store の access token を返す", async () => {
+  it("OS secure store の access token を返す", async () => {
     const token = await resolveSlackToken({
       now: 1_000,
       refreshWindowMs: 1_000,

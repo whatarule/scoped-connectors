@@ -31,7 +31,7 @@ node /a/b/scripts/thread.js <slack URL>
 
 ## sandbox 外での実行
 
-このスクリプトは macOS Keychain から Slack token record を読み取ります。
+このスクリプトは macOS Keychain または Windows Credential Manager から Slack token record を読み取ります。
 Claude Code / Codex の sandbox 内では OS secure store の読み取りに失敗するため、必ず最初から sandbox 外で実行してください。
 
 ### Claude Code の場合
