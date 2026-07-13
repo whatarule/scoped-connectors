@@ -16,6 +16,10 @@ const {
 const WSL_ENV = { WSL_DISTRO_NAME: "Ubuntu" };
 
 describe("detectTokenStore", () => {
+  it("SERVICE は scoped-connectors/google-drive", () => {
+    assert.equal(SERVICE, "scoped-connectors/google-drive");
+  });
+
   it("macOS では Keychain を使う", () => {
     assert.deepEqual(detectTokenStore({ platform: "darwin" }), {
       type: "keychain",
@@ -116,11 +120,11 @@ describe("readTokenRecord", () => {
       platform: "darwin",
       execFileAsync: async (command, args) => {
         calls.push({ command, args });
-        return { stdout: JSON.stringify({ access_token: "xoxp-test" }) };
+        return { stdout: JSON.stringify({ access_token: "ya29.test" }) };
       },
     });
 
-    assert.deepEqual(record, { access_token: "xoxp-test" });
+    assert.deepEqual(record, { access_token: "ya29.test" });
     assert.deepEqual(calls, [
       {
         command: "security",
@@ -130,7 +134,7 @@ describe("readTokenRecord", () => {
   });
 
   it("非 ASCII を含む record は security が hex 出力するためデコードして読む", async () => {
-    const payload = JSON.stringify({ access_token: "xoxp-test", team_name: "山田商事" });
+    const payload = JSON.stringify({ access_token: "ya29.test", user_name: "山田 太郎" });
     const record = await readTokenRecord({
       platform: "darwin",
       execFileAsync: async () => ({
@@ -138,7 +142,7 @@ describe("readTokenRecord", () => {
       }),
     });
 
-    assert.deepEqual(record, { access_token: "xoxp-test", team_name: "山田商事" });
+    assert.deepEqual(record, { access_token: "ya29.test", user_name: "山田 太郎" });
   });
 
   it("macOS Keychain に record がなければ null を返す", async () => {
@@ -161,11 +165,11 @@ describe("readTokenRecord", () => {
       windowsHelperPath: "helper.ps1",
       execFileWithInput: async (command, args, input) => {
         calls.push({ command, args, input });
-        return { stdout: JSON.stringify({ access_token: "xoxp-test" }) };
+        return { stdout: JSON.stringify({ access_token: "ya29.test" }) };
       },
     });
 
-    assert.deepEqual(record, { access_token: "xoxp-test" });
+    assert.deepEqual(record, { access_token: "ya29.test" });
     assert.deepEqual(calls, [
       {
         command: "powershell.exe",
@@ -202,11 +206,11 @@ describe("readTokenRecord", () => {
       },
       execFileWithInput: async (command, args, input) => {
         powershellCalls.push({ command, args, input });
-        return { stdout: JSON.stringify({ access_token: "xoxp-wsl" }) };
+        return { stdout: JSON.stringify({ access_token: "ya29.wsl" }) };
       },
     });
 
-    assert.deepEqual(record, { access_token: "xoxp-wsl" });
+    assert.deepEqual(record, { access_token: "ya29.wsl" });
     assert.deepEqual(execCalls, [{ command: "wslpath", args: ["-w", "/repo/helper.ps1"] }]);
     assert.deepEqual(powershellCalls, [
       {
@@ -221,7 +225,7 @@ describe("readTokenRecord", () => {
 describe("writeTokenRecord", () => {
   it("macOS では Keychain に token record を保存する", async () => {
     const calls = [];
-    const record = { access_token: "xoxp-test", refresh_token: "xoxe-refresh" };
+    const record = { access_token: "ya29.test", refresh_token: "1//refresh" };
     const store = await writeTokenRecord(
       record,
       {
@@ -244,7 +248,7 @@ describe("writeTokenRecord", () => {
 
   it("Windows では PowerShell helper へ token record を stdin で渡す", async () => {
     const calls = [];
-    const record = { access_token: "xoxp-test", refresh_token: "xoxe-refresh" };
+    const record = { access_token: "ya29.test", refresh_token: "1//refresh" };
     const store = await writeTokenRecord(
       record,
       {
@@ -279,7 +283,7 @@ describe("writeTokenRecord", () => {
   it("WSL では Windows path に変換した helper へ token record を stdin で渡す", async () => {
     const execCalls = [];
     const powershellCalls = [];
-    const record = { access_token: "xoxp-wsl", refresh_token: "xoxe-refresh" };
+    const record = { access_token: "ya29.wsl", refresh_token: "1//refresh" };
     const store = await writeTokenRecord(
       record,
       {

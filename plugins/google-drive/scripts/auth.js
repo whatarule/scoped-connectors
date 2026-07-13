@@ -1,0 +1,194 @@
+"use strict";
+
+const {
+  readTokenRecord,
+  writeTokenRecord,
+} = require("./token-store");
+
+const TOKEN_URI = "https://oauth2.googleapis.com/token";
+const DEFAULT_REFRESH_WINDOW_MS = 5 * 60 * 1000;
+
+const DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+const DRIVE_ACTIVITY_READONLY_SCOPE =
+  "https://www.googleapis.com/auth/drive.activity.readonly";
+const DRIVE_LABELS_READONLY_SCOPE =
+  "https://www.googleapis.com/auth/drive.labels.readonly";
+const READONLY_SCOPES = [
+  DRIVE_READONLY_SCOPE,
+  DRIVE_ACTIVITY_READONLY_SCOPE,
+  DRIVE_LABELS_READONLY_SCOPE,
+];
+
+function missingRequiredScopes(scopeText) {
+  const granted = new Set(String(scopeText || "").split(/\s+/).filter(Boolean));
+  return READONLY_SCOPES.filter((scope) => !granted.has(scope));
+}
+
+function assertRequiredScopes(record) {
+  const missing = missingRequiredScopes(record && record.scope);
+  if (!missing.length) return;
+  throw new Error(
+    [
+      "保存された Google Drive token の OAuth scope が不足しています。",
+      "Drive のファイル・Activity・Labels をすべて読み取り専用で参照するには google-drive-auth で再ログインしてください。",
+      "不足 scope:",
+      ...missing.map((scope) => `- ${scope}`),
+    ].join("\n")
+  );
+}
+
+function tokenExpiresSoon(record, now = Date.now(), refreshWindowMs = DEFAULT_REFRESH_WINDOW_MS) {
+  if (!record || !record.expires_at) return false;
+  const expiresAt = Number(record.expires_at);
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return false;
+  return expiresAt <= now + refreshWindowMs;
+}
+
+function hasUsableAccessToken(record, now = Date.now(), refreshWindowMs = DEFAULT_REFRESH_WINDOW_MS) {
+  return Boolean(record && record.access_token && !tokenExpiresSoon(record, now, refreshWindowMs));
+}
+
+function isRefreshReauthError(err) {
+  return Boolean(err && err.googleError === "invalid_grant");
+}
+
+function buildRefreshReauthError(err) {
+  const googleError = err && err.googleError ? err.googleError : "unknown_error";
+  const reauthError = new Error(
+    [
+      `Google Drive refresh token が期限切れまたは無効です: ${googleError}。google-drive-auth で再ログインしてください。`,
+      "(OAuth 同意画面がテストステータスの場合、refresh token は 7 日で失効します)",
+    ].join("\n")
+  );
+  reauthError.googleError = googleError;
+  if (err && err.status) reauthError.status = err.status;
+  return reauthError;
+}
+
+function buildRefreshBody(record) {
+  if (!record || !record.client_id) {
+    throw new Error("Google Drive token record に client_id がありません。google-drive-auth で再ログインしてください。");
+  }
+  if (!record.refresh_token) {
+    throw new Error("Google Drive refresh token が見つかりません。google-drive-auth で再ログインしてください。");
+  }
+
+  const body = new URLSearchParams({
+    client_id: record.client_id,
+    grant_type: "refresh_token",
+    refresh_token: record.refresh_token,
+  });
+  // client_secret は login 時の対話入力で Token Record にのみ保存される。record にある場合だけ送る。
+  if (record.client_secret) {
+    body.set("client_secret", record.client_secret);
+  }
+  return body;
+}
+
+function buildRefreshedTokenRecord(record, data, now = Date.now()) {
+  if (!data.access_token) {
+    throw new Error("Google refresh response に access_token が含まれていません。");
+  }
+
+  return {
+    ...record,
+    scope: data.scope || record.scope || "",
+    access_token: data.access_token,
+    // Google は refresh で refresh_token を返さないのが正常。既存値を維持する
+    refresh_token: data.refresh_token || record.refresh_token,
+    expires_at: data.expires_in ? now + data.expires_in * 1000 : 0,
+    token_type: data.token_type || record.token_type || "Bearer",
+  };
+}
+
+async function refreshTokenRecord(record, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch;
+  const writeRecord = options.writeTokenRecord || writeTokenRecord;
+  const now = options.now ?? Date.now();
+  const body = buildRefreshBody(record);
+
+  const response = await fetchImpl(TOKEN_URI, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const googleError = data.error || "unknown_error";
+    const err = new Error(`Google Drive token refresh に失敗しました: ${googleError}`);
+    err.googleError = googleError;
+    err.status = response.status;
+    throw err;
+  }
+
+  const refreshed = buildRefreshedTokenRecord(record, data, now);
+  assertRequiredScopes(refreshed);
+  await writeRecord(refreshed);
+  return refreshed;
+}
+
+function recordChanged(previous, next) {
+  if (!previous || !next) return false;
+  return previous.access_token !== next.access_token || previous.refresh_token !== next.refresh_token;
+}
+
+async function reloadFreshTokenAfterRefreshRace(previousRecord, options = {}) {
+  const readRecord = options.readTokenRecord || readTokenRecord;
+  const now = options.now ?? Date.now();
+  const refreshWindowMs = options.refreshWindowMs ?? DEFAULT_REFRESH_WINDOW_MS;
+  const nextRecord = await readRecord();
+  if (recordChanged(previousRecord, nextRecord) && hasUsableAccessToken(nextRecord, now, refreshWindowMs)) {
+    return nextRecord.access_token;
+  }
+  return "";
+}
+
+async function getGoogleDriveAccessToken(options = {}) {
+  const readRecord = options.readTokenRecord || readTokenRecord;
+  const now = options.now ?? Date.now();
+  const refreshWindowMs = options.refreshWindowMs ?? DEFAULT_REFRESH_WINDOW_MS;
+  const record = await readRecord();
+  if (!record || !record.access_token) return "";
+  if (!record.expires_at && !record.refresh_token) {
+    throw new Error("Google Drive token record に有効期限と refresh token がありません。google-drive-auth で再ログインしてください。");
+  }
+  if (!tokenExpiresSoon(record, now, refreshWindowMs)) {
+    assertRequiredScopes(record);
+    return record.access_token;
+  }
+
+  try {
+    const refreshed = await refreshTokenRecord(record, options);
+    return refreshed.access_token;
+  } catch (err) {
+    if (isRefreshReauthError(err)) {
+      const reloadedToken = await reloadFreshTokenAfterRefreshRace(record, options);
+      if (reloadedToken) return reloadedToken;
+      throw buildRefreshReauthError(err);
+    }
+    throw err;
+  }
+}
+
+module.exports = {
+  TOKEN_URI,
+  DEFAULT_REFRESH_WINDOW_MS,
+  DRIVE_READONLY_SCOPE,
+  DRIVE_ACTIVITY_READONLY_SCOPE,
+  DRIVE_LABELS_READONLY_SCOPE,
+  READONLY_SCOPES,
+  missingRequiredScopes,
+  assertRequiredScopes,
+  tokenExpiresSoon,
+  hasUsableAccessToken,
+  isRefreshReauthError,
+  buildRefreshReauthError,
+  buildRefreshBody,
+  buildRefreshedTokenRecord,
+  refreshTokenRecord,
+  reloadFreshTokenAfterRefreshRace,
+  getGoogleDriveAccessToken,
+};

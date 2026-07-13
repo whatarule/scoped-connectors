@@ -1,6 +1,6 @@
 {
   "name": "google-drive",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "許可フォルダ配下の Google Drive ファイルを読み取り専用で参照するプラグイン",
   "author": { "name": "whatarule" },
   "repository": "https://github.com/whatarule/scoped-connectors",
@@ -13,7 +13,7 @@
     "longDescription": "Google Drive API に読み取り専用 scope で接続し、許可したフォルダの配下にあるファイルの内容を参照できるようにします。",
     "developerName": "whatarule",
     "category": "Productivity",
-    "capabilities": ["Read", "API connection check"],
+    "capabilities": ["Read", "Auth (login/status/clear)"],
     "defaultPrompt": ["このDriveファイルを読んで <URL>"]
   }
 }

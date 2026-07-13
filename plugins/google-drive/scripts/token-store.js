@@ -7,7 +7,7 @@ const { promisify } = require("node:util");
 
 const execFileAsync = promisify(execFile);
 
-const SERVICE = "scoped-connectors/slack";
+const SERVICE = "scoped-connectors/google-drive";
 const ACCOUNT = "default";
 const WINDOWS_TARGET = `${SERVICE}/${ACCOUNT}`;
 const WINDOWS_HELPER = path.join(__dirname, "windows-credential.ps1");
@@ -52,7 +52,7 @@ function detectTokenStore(options = {}) {
       bridge: "wsl",
     };
   }
-  throw new Error("Slack token store は macOS Keychain または Windows Credential Manager のみ対応しています。");
+  throw new Error("Google Drive token store は macOS Keychain または Windows Credential Manager のみ対応しています。");
 }
 
 function describeTokenStore(options = {}) {
@@ -64,7 +64,7 @@ function describeTokenStore(options = {}) {
   return `Windows Credential Manager (${store.target})${bridge}`;
 }
 
-// security find-generic-password -w は、値に非 ASCII バイト(日本語のワークスペース名など)が
+// security find-generic-password -w は、値に非 ASCII バイト(日本語の表示名など)が
 // 含まれると hex で出力する。JSON payload は "{" 始まりで hex 文字列にはならないため誤検知しない。
 function decodeKeychainPayload(raw) {
   if (/^[0-9a-f]+$/i.test(raw) && raw.length % 2 === 0) {
@@ -142,7 +142,7 @@ async function readTokenRecord(options = {}) {
       if (err.code === 44 || /could not be found/i.test(err.stderr || "")) {
         return null;
       }
-      throw new Error("Keychain から Slack token を読み取れませんでした。");
+      throw new Error("Keychain から Google Drive token を読み取れませんでした。");
     }
   }
 
@@ -160,7 +160,7 @@ async function readTokenRecord(options = {}) {
     return JSON.parse(stdout.trim());
   } catch (err) {
     if (err.code === 3) return null;
-    throw new Error("Windows Credential Manager から Slack token を読み取れませんでした。");
+    throw new Error("Windows Credential Manager から Google Drive token を読み取れませんでした。");
   }
 }
 
@@ -220,7 +220,7 @@ async function deleteTokenRecord(options = {}) {
       if (err.code === 44 || /could not be found/i.test(err.stderr || "")) {
         return { store, deleted: false };
       }
-      throw new Error("Keychain から Slack token を削除できませんでした。");
+      throw new Error("Keychain から Google Drive token を削除できませんでした。");
     }
   }
 
@@ -238,7 +238,7 @@ async function deleteTokenRecord(options = {}) {
     return { store, deleted: true };
   } catch (err) {
     if (err.code === 3) return { store, deleted: false };
-    throw new Error("Windows Credential Manager から Slack token を削除できませんでした。");
+    throw new Error("Windows Credential Manager から Google Drive token を削除できませんでした。");
   }
 }
 
@@ -247,10 +247,10 @@ module.exports = {
   ACCOUNT,
   WINDOWS_TARGET,
   WINDOWS_HELPER,
-  decodeKeychainPayload,
   isWsl,
   detectTokenStore,
   describeTokenStore,
+  decodeKeychainPayload,
   execFileWithInput,
   resolveWindowsHelperPath,
   readTokenRecord,
