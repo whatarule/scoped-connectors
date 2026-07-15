@@ -1,6 +1,5 @@
 "use strict";
 
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const {
@@ -16,6 +15,13 @@ const {
   DEFAULT_CONFIG_PATH,
 } = require("./allowlist");
 const { promptHiddenInput } = require("./secret-input");
+const {
+  base64Url,
+  createPkcePair,
+  createState,
+} = require("./_shared/oauth-pkce");
+const { validateAuthorizationCallback } = require("./_shared/oauth-callback");
+const { postFormForJson } = require("./_shared/oauth-http");
 
 const AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
@@ -159,23 +165,9 @@ function validateGrantedScopes(tokenResponse) {
   );
 }
 
-function base64Url(input) {
-  return input
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function createPkcePair() {
-  const verifier = base64Url(crypto.randomBytes(32));
-  const challenge = base64Url(crypto.createHash("sha256").update(verifier).digest());
-  return { verifier, challenge };
-}
-
 function createCallbackServer() {
   return new Promise((resolve, reject) => {
-    const state = base64Url(crypto.randomBytes(24));
+    const state = createState();
     const server = http.createServer();
     server.on("error", reject);
     server.listen(0, "127.0.0.1", () => {
@@ -184,20 +176,6 @@ function createCallbackServer() {
       resolve({ server, state, redirectUri });
     });
   });
-}
-
-function validateAuthorizationCallback({ error = "", code = "", returnedState = "", expectedState = "" }) {
-  if (error) {
-    const err = new Error(`認可が失敗しました: ${error}`);
-    err.responseBody = "Authorization failed. You can close this tab.";
-    throw err;
-  }
-  if (!code || returnedState !== expectedState) {
-    const err = new Error("認可レスポンスが不正です。");
-    err.responseBody = "Invalid authorization response. You can close this tab.";
-    throw err;
-  }
-  return code;
 }
 
 async function waitForAuthorization(client) {
@@ -274,15 +252,7 @@ async function exchangeCodeForToken(client, authorization, fetchImpl = fetch) {
     body.set("client_secret", client.client_secret);
   }
 
-  const response = await fetchImpl(TOKEN_URI, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body,
-  });
-  const data = await response.json().catch(() => ({}));
+  const { response, data } = await postFormForJson(TOKEN_URI, body, fetchImpl);
   if (!response.ok) {
     const message = data.error_description || data.error || `HTTP ${response.status || "unknown"}`;
     throw new Error(formatTokenEndpointError(message, client));
