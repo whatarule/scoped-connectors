@@ -18,6 +18,7 @@ const {
 } = require("../oauth-login");
 
 const FULL_SCOPE = READONLY_SCOPES.join(" ");
+const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";
 
 describe("normalizeDomains", () => {
   it("配列を trim・小文字化・@除去して正規化する", () => {
@@ -163,8 +164,20 @@ describe("validateGrantedScopes", () => {
     assert.throws(
       () => validateGrantedScopes({ scope: READONLY_SCOPES[0] }),
       (err) => {
-        assert.match(err.message, /scope が不足/);
+        assert.match(err.message, /不足 scope/);
         assert.match(err.message, new RegExp(READONLY_SCOPES[1].replace(/[/.]/g, "\\$&")));
+        assert.match(err.message, /google-drive-auth/);
+        return true;
+      }
+    );
+  });
+
+  it("許可されていない scope を列挙して再ログインを促す", () => {
+    assert.throws(
+      () => validateGrantedScopes({ scope: `${FULL_SCOPE} ${OVERBROAD_SCOPE}` }),
+      (err) => {
+        assert.match(err.message, /許可されていない scope/);
+        assert.match(err.message, new RegExp(OVERBROAD_SCOPE.replace(/[/.]/g, "\\$&")));
         assert.match(err.message, /google-drive-auth/);
         return true;
       }

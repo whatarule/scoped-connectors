@@ -26,22 +26,43 @@ const READONLY_SCOPES = [
   DRIVE_LABELS_READONLY_SCOPE,
 ];
 
+function parseGrantedScopes(scopeText) {
+  return [...new Set(String(scopeText || "").split(/\s+/).filter(Boolean))];
+}
+
+function analyzeGrantedScopes(scopeText) {
+  const grantedScopes = parseGrantedScopes(scopeText);
+  const granted = new Set(grantedScopes);
+  const allowed = new Set(READONLY_SCOPES);
+  return {
+    missing: READONLY_SCOPES.filter((scope) => !granted.has(scope)),
+    unexpected: grantedScopes.filter((scope) => !allowed.has(scope)),
+  };
+}
+
 function missingRequiredScopes(scopeText) {
-  const granted = new Set(String(scopeText || "").split(/\s+/).filter(Boolean));
-  return READONLY_SCOPES.filter((scope) => !granted.has(scope));
+  return analyzeGrantedScopes(scopeText).missing;
+}
+
+function unexpectedGrantedScopes(scopeText) {
+  return analyzeGrantedScopes(scopeText).unexpected;
 }
 
 function assertRequiredScopes(record) {
-  const missing = missingRequiredScopes(record && record.scope);
-  if (!missing.length) return;
-  throw new Error(
-    [
-      "保存された Google Drive token の OAuth scope が不足しています。",
-      "Drive のファイル・Activity・Labels をすべて読み取り専用で参照するには google-drive-auth で再ログインしてください。",
-      "不足 scope:",
-      ...missing.map((scope) => `- ${scope}`),
-    ].join("\n")
-  );
+  const scopeText = record && record.scope;
+  const { missing, unexpected } = analyzeGrantedScopes(scopeText);
+  if (!missing.length && !unexpected.length) return;
+  const lines = [
+    "保存された Google Drive token の OAuth scope が許可された読み取り専用 scope と一致しません。",
+    "Drive のファイル・Activity・Labels をすべて読み取り専用で参照するには google-drive-auth で再ログインしてください。",
+  ];
+  if (missing.length) {
+    lines.push("不足 scope:", ...missing.map((scope) => `- ${scope}`));
+  }
+  if (unexpected.length) {
+    lines.push("許可されていない scope:", ...unexpected.map((scope) => `- ${scope}`));
+  }
+  throw new Error(lines.join("\n"));
 }
 
 function isRefreshReauthError(err) {
@@ -161,6 +182,7 @@ module.exports = {
   DRIVE_LABELS_READONLY_SCOPE,
   READONLY_SCOPES,
   missingRequiredScopes,
+  unexpectedGrantedScopes,
   assertRequiredScopes,
   tokenExpiresSoon,
   hasUsableAccessToken,

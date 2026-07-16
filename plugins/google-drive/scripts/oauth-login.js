@@ -5,6 +5,7 @@ const http = require("node:http");
 const {
   READONLY_SCOPES,
   missingRequiredScopes,
+  unexpectedGrantedScopes,
 } = require("./auth");
 const {
   describeTokenStore,
@@ -159,9 +160,13 @@ function validateGrantedScopes(tokenResponse) {
     );
   }
   const missing = missingRequiredScopes(scopeText);
-  if (missing.length === 0) return;
+  const unexpected = unexpectedGrantedScopes(scopeText);
+  if (missing.length === 0 && unexpected.length === 0) return;
+  const details = [];
+  if (missing.length) details.push(`不足 scope: ${missing.join(", ")}`);
+  if (unexpected.length) details.push(`許可されていない scope: ${unexpected.join(", ")}`);
   throw new Error(
-    `Google token response に必要な scope が不足しています: ${missing.join(", ")}。同意画面で全ての権限を許可してから google-drive-auth で再ログインしてください。`
+    `Google token response の OAuth scope が許可された読み取り専用 scope と一致しません: ${details.join(" / ")}。同意画面で全ての権限を許可してから google-drive-auth で再ログインしてください。`
   );
 }
 

@@ -4,6 +4,7 @@ const {
   TOKEN_URI,
   READONLY_SCOPES,
   missingRequiredScopes,
+  unexpectedGrantedScopes,
   assertRequiredScopes,
   buildRefreshBody,
   buildRefreshedTokenRecord,
@@ -14,6 +15,7 @@ const {
 } = require("../auth");
 
 const FULL_SCOPE = READONLY_SCOPES.join(" ");
+const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";
 
 const BASE_RECORD = {
   version: 1,
@@ -39,12 +41,38 @@ describe("missingRequiredScopes", () => {
   });
 });
 
+describe("unexpectedGrantedScopes", () => {
+  it("許可 scope だけなら空配列を返す", () => {
+    assert.deepEqual(unexpectedGrantedScopes(FULL_SCOPE), []);
+  });
+
+  it("許可されていない scope を列挙する", () => {
+    assert.deepEqual(unexpectedGrantedScopes(`${FULL_SCOPE} ${OVERBROAD_SCOPE}`), [
+      OVERBROAD_SCOPE,
+    ]);
+  });
+});
+
 describe("assertRequiredScopes", () => {
   it("scope 不足時は再ログインを促し token 値を漏らさない", () => {
     assert.throws(
       () => assertRequiredScopes({ ...BASE_RECORD, scope: READONLY_SCOPES[0] }),
       (err) => {
         assert.match(err.message, /再ログイン/);
+        assert.match(err.message, /google-drive-auth/);
+        assert.doesNotMatch(err.message, /ya29\.old/);
+        assert.doesNotMatch(err.message, /1\/\/refresh-old/);
+        return true;
+      }
+    );
+  });
+
+  it("scope 超過時は再ログインを促し token 値を漏らさない", () => {
+    assert.throws(
+      () => assertRequiredScopes({ ...BASE_RECORD, scope: `${FULL_SCOPE} ${OVERBROAD_SCOPE}` }),
+      (err) => {
+        assert.match(err.message, /許可されていない scope/);
+        assert.match(err.message, new RegExp(OVERBROAD_SCOPE.replace(/[/.]/g, "\\$&")));
         assert.match(err.message, /google-drive-auth/);
         assert.doesNotMatch(err.message, /ya29\.old/);
         assert.doesNotMatch(err.message, /1\/\/refresh-old/);
@@ -179,6 +207,32 @@ describe("refreshTokenRecord", () => {
         return true;
       }
     );
+  });
+
+  it("refresh response の scope が超過していれば保存せず再ログインを促す", async () => {
+    const writes = [];
+    await assert.rejects(
+      () =>
+        refreshTokenRecord(BASE_RECORD, {
+          now: 1_000,
+          writeTokenRecord: async (record) => {
+            writes.push(record);
+          },
+          fetchImpl: async () => ({
+            ok: true,
+            async json() {
+              return {
+                access_token: "ya29.new",
+                expires_in: 3600,
+                token_type: "Bearer",
+                scope: `${FULL_SCOPE} ${OVERBROAD_SCOPE}`,
+              };
+            },
+          }),
+        }),
+      /許可されていない scope/
+    );
+    assert.deepEqual(writes, []);
   });
 });
 
