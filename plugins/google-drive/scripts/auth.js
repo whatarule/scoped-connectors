@@ -25,6 +25,7 @@ const READONLY_SCOPES = [
   DRIVE_ACTIVITY_READONLY_SCOPE,
   DRIVE_LABELS_READONLY_SCOPE,
 ];
+const TOKEN_RECORD_VERSION = 1;
 
 function parseGrantedScopes(scopeText) {
   return [...new Set(String(scopeText || "").split(/\s+/).filter(Boolean))];
@@ -46,6 +47,14 @@ function missingRequiredScopes(scopeText) {
 
 function unexpectedGrantedScopes(scopeText) {
   return analyzeGrantedScopes(scopeText).unexpected;
+}
+
+function assertSupportedTokenRecordVersion(record) {
+  const version = record && record.version;
+  if (version === TOKEN_RECORD_VERSION) return;
+  throw new Error(
+    `保存された Google Drive token record の version が未対応です。対応 version: ${TOKEN_RECORD_VERSION}。google-drive-auth で再ログインしてください。`
+  );
 }
 
 function assertRequiredScopes(record) {
@@ -86,6 +95,7 @@ function buildRefreshBody(record) {
   if (!record || !record.client_id) {
     throw new Error("Google Drive token record に client_id がありません。google-drive-auth で再ログインしてください。");
   }
+  assertSupportedTokenRecordVersion(record);
   if (!record.refresh_token) {
     throw new Error("Google Drive refresh token が見つかりません。google-drive-auth で再ログインしてください。");
   }
@@ -153,6 +163,7 @@ async function getGoogleDriveAccessToken(options = {}) {
   const refreshWindowMs = options.refreshWindowMs ?? DEFAULT_REFRESH_WINDOW_MS;
   const record = await readRecord();
   if (!record || !record.access_token) return "";
+  assertSupportedTokenRecordVersion(record);
   if (!record.expires_at && !record.refresh_token) {
     throw new Error("Google Drive token record に有効期限と refresh token がありません。google-drive-auth で再ログインしてください。");
   }
@@ -176,6 +187,7 @@ async function getGoogleDriveAccessToken(options = {}) {
 
 module.exports = {
   TOKEN_URI,
+  TOKEN_RECORD_VERSION,
   DEFAULT_REFRESH_WINDOW_MS,
   DRIVE_READONLY_SCOPE,
   DRIVE_ACTIVITY_READONLY_SCOPE,
@@ -183,6 +195,7 @@ module.exports = {
   READONLY_SCOPES,
   missingRequiredScopes,
   unexpectedGrantedScopes,
+  assertSupportedTokenRecordVersion,
   assertRequiredScopes,
   tokenExpiresSoon,
   hasUsableAccessToken,

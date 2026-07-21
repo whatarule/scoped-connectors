@@ -1,6 +1,9 @@
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
-const { READONLY_SCOPES } = require("../auth");
+const {
+  READONLY_SCOPES,
+  TOKEN_RECORD_VERSION,
+} = require("../auth");
 const {
   DEFAULT_ALLOWED_DOMAINS,
   DEFAULT_CLIENT_ID,
@@ -387,7 +390,7 @@ describe("buildTokenRecord", () => {
     );
 
     assert.deepEqual(record, {
-      version: 1,
+      version: TOKEN_RECORD_VERSION,
       client_id: "example.apps.googleusercontent.com",
       client_secret: "cs-value",
       user_email: "user@compass-e.com",
@@ -404,12 +407,24 @@ describe("buildTokenRecord", () => {
   it("client_secret がない client では空文字にする", () => {
     const record = buildTokenRecord(
       { client_id: "example.apps.googleusercontent.com" },
-      { access_token: "ya29.new", refresh_token: "1//refresh-new" },
+      { access_token: "ya29.new", refresh_token: "1//refresh-new", scope: FULL_SCOPE },
       1_000
     );
 
     assert.equal(record.client_secret, "");
     assert.equal(record.expires_at, 0);
     assert.equal(record.scope, FULL_SCOPE);
+  });
+
+  it("Google token response に scope がなければ保存 record を作らない", () => {
+    assert.throws(
+      () =>
+        buildTokenRecord(
+          { client_id: "example.apps.googleusercontent.com" },
+          { access_token: "ya29.new", refresh_token: "1//refresh-new" },
+          1_000
+        ),
+      /scope/
+    );
   });
 });

@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const http = require("node:http");
 const {
   READONLY_SCOPES,
+  TOKEN_RECORD_VERSION,
   missingRequiredScopes,
   unexpectedGrantedScopes,
 } = require("./auth");
@@ -325,13 +326,17 @@ async function verifyTokenAuthorization(options, tokenResponse, fetchImpl = fetc
 }
 
 function buildTokenRecord(client, data, now = Date.now(), verification = {}) {
+  const scope = String((data && data.scope) || "").trim();
+  if (!scope) {
+    throw new Error("Google token response に scope が含まれていません。");
+  }
   return {
-    version: 1,
+    version: TOKEN_RECORD_VERSION,
     client_id: client.client_id,
     client_secret: client.client_secret || "",
     user_email: verification.user_email || "",
     user_name: verification.user_name || "",
-    scope: data.scope || READONLY_SCOPES.join(" "),
+    scope,
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: data.expires_in ? now + data.expires_in * 1000 : 0,

@@ -2,9 +2,11 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   TOKEN_URI,
+  TOKEN_RECORD_VERSION,
   READONLY_SCOPES,
   missingRequiredScopes,
   unexpectedGrantedScopes,
+  assertSupportedTokenRecordVersion,
   assertRequiredScopes,
   buildRefreshBody,
   buildRefreshedTokenRecord,
@@ -18,7 +20,7 @@ const FULL_SCOPE = READONLY_SCOPES.join(" ");
 const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";
 
 const BASE_RECORD = {
-  version: 1,
+  version: TOKEN_RECORD_VERSION,
   client_id: "example.apps.googleusercontent.com",
   client_secret: "client-secret-value",
   user_email: "user@compass-e.com",
@@ -50,6 +52,25 @@ describe("unexpectedGrantedScopes", () => {
     assert.deepEqual(unexpectedGrantedScopes(`${FULL_SCOPE} ${OVERBROAD_SCOPE}`), [
       OVERBROAD_SCOPE,
     ]);
+  });
+});
+
+describe("assertSupportedTokenRecordVersion", () => {
+  it("対応 version なら通す", () => {
+    assert.doesNotThrow(() => assertSupportedTokenRecordVersion(BASE_RECORD));
+  });
+
+  it("未対応 version は再ログインを促し token 値を漏らさない", () => {
+    assert.throws(
+      () => assertSupportedTokenRecordVersion({ ...BASE_RECORD, version: 2 }),
+      (err) => {
+        assert.match(err.message, /version/);
+        assert.match(err.message, /再ログイン/);
+        assert.doesNotMatch(err.message, /ya29\.old/);
+        assert.doesNotMatch(err.message, /1\/\/refresh-old/);
+        return true;
+      }
+    );
   });
 });
 
@@ -115,6 +136,19 @@ describe("buildRefreshBody", () => {
   it("client_id または refresh_token がなければ再ログインを促す", () => {
     assert.throws(() => buildRefreshBody({ ...BASE_RECORD, client_id: "" }), /再ログイン/);
     assert.throws(() => buildRefreshBody({ ...BASE_RECORD, refresh_token: "" }), /再ログイン/);
+  });
+
+  it("未対応 version の record は refresh request body を作らない", () => {
+    assert.throws(
+      () => buildRefreshBody({ ...BASE_RECORD, version: 2 }),
+      (err) => {
+        assert.match(err.message, /version/);
+        assert.match(err.message, /再ログイン/);
+        assert.doesNotMatch(err.message, /ya29\.old/);
+        assert.doesNotMatch(err.message, /1\/\/refresh-old/);
+        return true;
+      }
+    );
   });
 });
 
@@ -256,6 +290,25 @@ describe("getGoogleDriveAccessToken", () => {
     });
 
     assert.equal(token, "ya29.old");
+  });
+
+  it("未対応 version の保存 record は access token 利用前に拒否する", async () => {
+    await assert.rejects(
+      () =>
+        getGoogleDriveAccessToken({
+          readTokenRecord: async () => ({ ...BASE_RECORD, version: 2 }),
+          fetchImpl: async () => {
+            assert.fail("refresh should not be called");
+          },
+        }),
+      (err) => {
+        assert.match(err.message, /version/);
+        assert.match(err.message, /再ログイン/);
+        assert.doesNotMatch(err.message, /ya29\.old/);
+        assert.doesNotMatch(err.message, /1\/\/refresh-old/);
+        return true;
+      }
+    );
   });
 
   it("期限切れ間近 token は refresh して新 token を返す", async () => {
