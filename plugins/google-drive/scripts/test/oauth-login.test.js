@@ -7,6 +7,7 @@ const {
   DEFAULT_CONFIG_PATH,
   TOKEN_URI,
   normalizeDomains,
+  resolveClientId,
   parseArgs,
   validateOptions,
   resolveOAuthClient,
@@ -44,7 +45,7 @@ describe("parseArgs", () => {
   it("既定では compass-e.com を許可ドメインにする", () => {
     const options = parseArgs([], {}, () => ({}));
     assert.deepEqual(options.allowedDomains, DEFAULT_ALLOWED_DOMAINS);
-    assert.equal(options.clientId, "");
+    assert.equal(options.clientId, DEFAULT_CLIENT_ID);
     assert.equal(options.configPath, DEFAULT_CONFIG_PATH);
   });
 
@@ -84,6 +85,30 @@ describe("parseArgs", () => {
     assert.equal(options.clientId, "cli.apps.googleusercontent.com");
   });
 
+  it("clientId の優先順位は CLI、環境変数、config、同梱既定値の順に解決する", () => {
+    assert.equal(
+      resolveClientId(
+        { clientId: " cli.apps.googleusercontent.com " },
+        { clientId: "config.apps.googleusercontent.com" },
+        { GOOGLE_DRIVE_CLIENT_ID: "env.apps.googleusercontent.com" }
+      ),
+      "cli.apps.googleusercontent.com"
+    );
+    assert.equal(
+      resolveClientId(
+        { clientId: "" },
+        { clientId: "config.apps.googleusercontent.com" },
+        { GOOGLE_DRIVE_CLIENT_ID: " env.apps.googleusercontent.com " }
+      ),
+      "env.apps.googleusercontent.com"
+    );
+    assert.equal(
+      resolveClientId({ clientId: "" }, { client_id: "legacy.apps.googleusercontent.com" }, {}),
+      "legacy.apps.googleusercontent.com"
+    );
+    assert.equal(resolveClientId({ clientId: "" }, {}, {}), DEFAULT_CLIENT_ID);
+  });
+
   it("config path は GOOGLE_DRIVE_CONFIG_PATH で上書きできる(--config は廃止)", () => {
     const loaded = [];
     const options = parseArgs(
@@ -118,7 +143,7 @@ describe("validateOptions", () => {
 describe("resolveOAuthClient", () => {
   it("同梱の共有 client_id と対話入力の secret を組み合わせる", async () => {
     const prompts = [];
-    const client = await resolveOAuthClient({ clientId: "" }, async (question) => {
+    const client = await resolveOAuthClient({ clientId: DEFAULT_CLIENT_ID }, async (question) => {
       prompts.push(question);
       return "typed-client-secret";
     });
@@ -154,7 +179,7 @@ describe("resolveOAuthClient", () => {
 
   it("同梱の共有 client_id で secret が空なら失敗する", async () => {
     await assert.rejects(
-      () => resolveOAuthClient({ clientId: "" }, async () => ""),
+      () => resolveOAuthClient({ clientId: DEFAULT_CLIENT_ID }, async () => ""),
       /client secret が必要/
     );
   });

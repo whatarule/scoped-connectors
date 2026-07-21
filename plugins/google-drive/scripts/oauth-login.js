@@ -69,13 +69,25 @@ function normalizeDomains(value) {
     .filter(Boolean);
 }
 
+function resolveClientId(parsed, config = {}, env = process.env) {
+  for (const value of [
+    parsed.clientId,
+    env[CLIENT_ID_ENV],
+    config.clientId,
+    config.client_id,
+    DEFAULT_CLIENT_ID,
+  ]) {
+    const clientId = String(value || "").trim();
+    if (clientId) return clientId;
+  }
+  return "";
+}
+
 function applyDefaults(parsed, config = {}, env = process.env) {
   const allowedDomains = normalizeDomains(
     env.GOOGLE_DRIVE_ALLOWED_DOMAINS || config.allowedDomains || DEFAULT_ALLOWED_DOMAINS
   );
-  const clientId = String(
-    parsed.clientId || env[CLIENT_ID_ENV] || config.clientId || config.client_id || ""
-  ).trim();
+  const clientId = resolveClientId(parsed, config, env);
 
   return {
     ...parsed,
@@ -128,7 +140,7 @@ function normalizeOAuthClient(client) {
 }
 
 async function resolveOAuthClient(options, promptImpl = promptHiddenInput) {
-  const clientId = options.clientId || DEFAULT_CLIENT_ID;
+  const clientId = options.clientId;
   const clientSecret = await promptImpl(
     "client secret を入力してください(表示されません。空 Enter で secret なし): "
   );
@@ -388,6 +400,7 @@ module.exports = {
   USAGE,
   loadConfigFile,
   normalizeDomains,
+  resolveClientId,
   applyDefaults,
   parseArgs,
   validateOptions,
