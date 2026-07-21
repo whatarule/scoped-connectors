@@ -66,10 +66,19 @@ describe("parseArgs", () => {
     assert.deepEqual(options.allowedDomains, ["env.example.com"]);
   });
 
-  it("--client-id は config の clientId より優先される", () => {
+  it("環境変数 GOOGLE_DRIVE_CLIENT_ID が config の clientId より優先される", () => {
+    const options = parseArgs(
+      [],
+      { GOOGLE_DRIVE_CLIENT_ID: "env.apps.googleusercontent.com" },
+      () => ({ clientId: "config.apps.googleusercontent.com" })
+    );
+    assert.equal(options.clientId, "env.apps.googleusercontent.com");
+  });
+
+  it("--client-id は環境変数と config の clientId より優先される", () => {
     const options = parseArgs(
       ["--client-id", "cli.apps.googleusercontent.com"],
-      {},
+      { GOOGLE_DRIVE_CLIENT_ID: "env.apps.googleusercontent.com" },
       () => ({ clientId: "config.apps.googleusercontent.com" })
     );
     assert.equal(options.clientId, "cli.apps.googleusercontent.com");

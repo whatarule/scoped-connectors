@@ -73,7 +73,9 @@ function applyDefaults(parsed, config = {}, env = process.env) {
   const allowedDomains = normalizeDomains(
     env.GOOGLE_DRIVE_ALLOWED_DOMAINS || config.allowedDomains || DEFAULT_ALLOWED_DOMAINS
   );
-  const clientId = String(parsed.clientId || config.clientId || config.client_id || "").trim();
+  const clientId = String(
+    parsed.clientId || env[CLIENT_ID_ENV] || config.clientId || config.client_id || ""
+  ).trim();
 
   return {
     ...parsed,
@@ -83,9 +85,9 @@ function applyDefaults(parsed, config = {}, env = process.env) {
 }
 
 function parseArgs(args, env = process.env, configLoader = loadConfigFile) {
+  const configPath = env[CONFIG_PATH_ENV] || DEFAULT_CONFIG_PATH;
   const parsed = {
-    clientId: env[CLIENT_ID_ENV] || "",
-    configPath: env[CONFIG_PATH_ENV] || DEFAULT_CONFIG_PATH,
+    clientId: "",
     help: false,
   };
 
@@ -101,8 +103,9 @@ function parseArgs(args, env = process.env, configLoader = loadConfigFile) {
     }
   }
 
-  if (parsed.help) return applyDefaults(parsed, {}, env);
-  return applyDefaults(parsed, configLoader(parsed.configPath), env);
+  const options = { ...parsed, configPath };
+  if (options.help) return applyDefaults(options, {}, env);
+  return applyDefaults(options, configLoader(configPath), env);
 }
 
 function validateOptions(options) {
