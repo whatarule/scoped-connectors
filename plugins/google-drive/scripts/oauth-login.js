@@ -143,7 +143,7 @@ async function resolveOAuthClient(options, promptImpl = promptHiddenInput) {
   });
 }
 
-function formatTokenEndpointError(message, client) {
+function formatTokenEndpointError(message) {
   const text = String(message || "unknown error");
   if (/client_secret/i.test(text) && /missing|required|invalid/i.test(text)) {
     return [
@@ -263,7 +263,7 @@ async function exchangeCodeForToken(client, authorization, fetchImpl = fetch) {
   const { response, data } = await postFormForJson(TOKEN_URI, body, fetchImpl);
   if (!response.ok) {
     const message = data.error_description || data.error || `HTTP ${response.status || "unknown"}`;
-    throw new Error(formatTokenEndpointError(message, client));
+    throw new Error(formatTokenEndpointError(message));
   }
   if (!data.access_token) {
     throw new Error("Google token response に access_token が含まれていません。");
