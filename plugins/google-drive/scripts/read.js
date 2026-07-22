@@ -1,7 +1,6 @@
 "use strict";
 
 const fs = require("node:fs");
-const os = require("node:os");
 const path = require("node:path");
 
 const { fetchDriveApi, fetchDriveApiRaw } = require("./common");
@@ -9,7 +8,7 @@ const { getConfigPath, loadAllowlist, verifyFileInAllowlist, FOLDER_ID_PATTERN }
 
 const USAGE =
   "使い方: read.js <fileId または Drive URL> [--format md|txt|csv|pdf] [--out dir] [--force]\n";
-const DEFAULT_OUT_DIR = path.join(os.tmpdir(), "drive-read");
+const DEFAULT_OUT_DIR = path.join(process.cwd(), "drive-read");
 const MAX_MEDIA_BYTES = 50 * 1024 * 1024;
 
 const GOOGLE_DOC = "application/vnd.google-apps.document";

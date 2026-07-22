@@ -2,7 +2,7 @@
 name: google-drive-read
 description: "Google Drive のファイル内容を読む。Triggers on: /google-drive-read, 'DriveのURLを読んで', 'Driveのファイルの内容', 'このDriveファイルを読んで'"
 user-invocable: true
-arguments: "<fileId または Drive URL> [--format md|txt|csv|pdf]"
+arguments: "<fileId または Drive URL> [--format md|txt|csv|pdf] [--out dir] [--force]"
 allowed-tools:
   - Bash
   - Read
@@ -31,7 +31,7 @@ node /a/b/scripts/read.js <fileId>
 ## 出力の扱い
 
 - Google Docs は Markdown、Sheets は CSV（先頭シートのみ）、Slides はテキストで stdout に出る
-- PDF・画像などのバイナリは一時ファイルに保存され、保存パスが表示される。**そのパスを Read ツールで読むこと**
+- PDF・画像などのバイナリは既定でカレントディレクトリ配下の `drive-read/<fileId>/` に保存され、保存パスが表示される。**そのパスを Read ツールで読むこと**
 - 「許可フォルダ配下ではありません」と拒否された場合、そのファイルは参照対象外。回避を試みない
 - 「許可フォルダが設定されていません」の場合は、SETUP.md の `config.json` 作成または `allowedFolderIds` 更新をユーザーに案内する
 

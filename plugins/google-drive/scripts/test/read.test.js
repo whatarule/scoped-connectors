@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const path = require("node:path");
 
 const {
   extractFileId,
@@ -115,6 +116,11 @@ test("parseArgs: target と オプションを解釈する", () => {
   assert.equal(options.format, "pdf");
   assert.equal(options.outDir, "/tmp/x");
   assert.equal(options.force, true);
+});
+
+test("parseArgs: 保存先の既定値はカレントディレクトリ配下", () => {
+  const options = parseArgs(["1AbC"]);
+  assert.equal(options.outDir, path.join(process.cwd(), "drive-read"));
 });
 
 test("parseArgs: target 必須・不明な format は throw", () => {

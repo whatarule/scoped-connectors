@@ -29,7 +29,7 @@ Drive認証状態を確認して
 ```
 
 Google Docs は Markdown、Sheets は CSV（先頭シートのみ）、Slides はテキストで取得します。
-PDF・画像などは一時ファイルに保存され、エージェントがそのファイルを読みます。
+PDF・画像などはカレントディレクトリ配下の `drive-read/<fileId>/` に保存され、エージェントがそのファイルを読みます。
 
 ### Codex
 
