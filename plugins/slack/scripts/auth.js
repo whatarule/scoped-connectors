@@ -4,20 +4,15 @@ const {
   readTokenRecord,
   writeTokenRecord,
 } = require("./token-store");
+const {
+  DEFAULT_REFRESH_WINDOW_MS,
+  tokenExpiresSoon,
+  hasUsableAccessToken,
+  reloadFreshTokenAfterRefreshRace: reloadFreshTokenAfterRefreshRaceBase,
+} = require("./_shared/token-refresh");
+const { postFormForJson } = require("./_shared/oauth-http");
 
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";
-const DEFAULT_REFRESH_WINDOW_MS = 5 * 60 * 1000;
-
-function tokenExpiresSoon(record, now = Date.now(), refreshWindowMs = DEFAULT_REFRESH_WINDOW_MS) {
-  if (!record || !record.expires_at) return false;
-  const expiresAt = Number(record.expires_at);
-  if (!Number.isFinite(expiresAt) || expiresAt <= 0) return false;
-  return expiresAt <= now + refreshWindowMs;
-}
-
-function hasUsableAccessToken(record, now = Date.now(), refreshWindowMs = DEFAULT_REFRESH_WINDOW_MS) {
-  return Boolean(record && record.access_token && !tokenExpiresSoon(record, now, refreshWindowMs));
-}
 
 function isRefreshRaceError(err) {
   return Boolean(err && ["invalid_refresh_token", "token_expired"].includes(err.slackError));
@@ -72,15 +67,7 @@ async function refreshTokenRecord(record, options = {}) {
   const now = options.now ?? Date.now();
   const body = buildRefreshBody(record);
 
-  const response = await fetchImpl(TOKEN_URI, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body,
-  });
-  const data = await response.json().catch(() => ({}));
+  const { response, data } = await postFormForJson(TOKEN_URI, body, fetchImpl);
   if (!response.ok || !data.ok) {
     const slackError = data.error || "unknown_error";
     const err = new Error(`Slack token refresh に失敗しました: ${slackError}`);
@@ -94,20 +81,12 @@ async function refreshTokenRecord(record, options = {}) {
   return refreshed;
 }
 
-function recordChanged(previous, next) {
-  if (!previous || !next) return false;
-  return previous.access_token !== next.access_token || previous.refresh_token !== next.refresh_token;
-}
-
 async function reloadFreshTokenAfterRefreshRace(previousRecord, options = {}) {
   const readRecord = options.readTokenRecord || readTokenRecord;
-  const now = options.now ?? Date.now();
-  const refreshWindowMs = options.refreshWindowMs ?? DEFAULT_REFRESH_WINDOW_MS;
-  const nextRecord = await readRecord();
-  if (recordChanged(previousRecord, nextRecord) && hasUsableAccessToken(nextRecord, now, refreshWindowMs)) {
-    return nextRecord.access_token;
-  }
-  return "";
+  return reloadFreshTokenAfterRefreshRaceBase(previousRecord, {
+    ...options,
+    readTokenRecord: readRecord,
+  });
 }
 
 async function getSlackAccessToken(options = {}) {

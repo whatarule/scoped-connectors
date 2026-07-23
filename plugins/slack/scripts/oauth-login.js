@@ -1,6 +1,5 @@
 "use strict";
 
-const crypto = require("node:crypto");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
@@ -9,6 +8,13 @@ const {
   describeTokenStore,
   writeTokenRecord,
 } = require("./token-store");
+const {
+  base64Url,
+  createPkcePair,
+  createState,
+} = require("./_shared/oauth-pkce");
+const { validateAuthorizationCallback: validateAuthorizationCallbackBase } = require("./_shared/oauth-callback");
+const { postFormForJson } = require("./_shared/oauth-http");
 
 const AUTH_URI = "https://slack.com/oauth/v2_user/authorize";
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";
@@ -162,24 +168,6 @@ function validateGrantedScopes(tokenResponse, requiredScopes = READONLY_SCOPES) 
   );
 }
 
-function base64Url(input) {
-  return input
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function createPkcePair() {
-  const verifier = base64Url(crypto.randomBytes(32));
-  const challenge = base64Url(crypto.createHash("sha256").update(verifier).digest());
-  return { verifier, challenge };
-}
-
-function createState() {
-  return base64Url(crypto.randomBytes(24));
-}
-
 function buildAuthorizeUrl(options, pkce, state) {
   const url = new URL(AUTH_URI);
   url.searchParams.set("client_id", options.clientId);
@@ -210,18 +198,12 @@ function createCallbackServer(redirectUri) {
   });
 }
 
-function validateAuthorizationCallback({ error = "", code = "", returnedState = "", expectedState = "" }) {
-  if (error) {
-    const err = new Error(`認可が失敗しました: ${error}`);
-    err.responseBody = "Slack authorization failed. You can close this tab.";
-    throw err;
-  }
-  if (!code || returnedState !== expectedState) {
-    const err = new Error("認可レスポンスが不正です。");
-    err.responseBody = "Invalid authorization response. You can close this tab.";
-    throw err;
-  }
-  return code;
+function validateAuthorizationCallback(args) {
+  return validateAuthorizationCallbackBase({
+    ...args,
+    errorResponseBody: "Slack authorization failed. You can close this tab.",
+    invalidResponseBody: "Invalid authorization response. You can close this tab.",
+  });
 }
 
 async function waitForAuthorization(options) {
@@ -290,15 +272,7 @@ async function exchangeCodeForToken(options, authorization, fetchImpl = fetch) {
     redirect_uri: authorization.redirectUri,
   });
 
-  const response = await fetchImpl(TOKEN_URI, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Accept: "application/json",
-    },
-    body,
-  });
-  const data = await response.json().catch(() => ({}));
+  const { response, data } = await postFormForJson(TOKEN_URI, body, fetchImpl);
   if (!response.ok || !data.ok) {
     const message = data.error_description || data.error || `HTTP ${response.status || "unknown"}`;
     throw new Error(`Slack token 取得に失敗しました: ${message}`);

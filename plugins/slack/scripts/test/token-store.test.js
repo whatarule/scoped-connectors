@@ -4,6 +4,7 @@ const {
   SERVICE,
   ACCOUNT,
   WINDOWS_TARGET,
+  WINDOWS_HELPER,
   isWsl,
   detectTokenStore,
   describeTokenStore,
@@ -16,6 +17,17 @@ const {
 const WSL_ENV = { WSL_DISTRO_NAME: "Ubuntu" };
 
 describe("detectTokenStore", () => {
+  it("SERVICE は scoped-connectors/slack", () => {
+    assert.equal(SERVICE, "scoped-connectors/slack");
+  });
+
+  it("既定の Windows helper は _shared の vendored copy を使う", () => {
+    assert.match(
+      WINDOWS_HELPER.split("\\").join("/"),
+      /plugins\/slack\/scripts\/_shared\/windows-credential\.ps1$/
+    );
+  });
+
   it("macOS では Keychain を使う", () => {
     assert.deepEqual(detectTokenStore({ platform: "darwin" }), {
       type: "keychain",

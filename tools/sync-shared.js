@@ -11,6 +11,10 @@ const TARGETS = [
     name: "google-drive",
     dir: path.join(REPO_ROOT, "plugins", "google-drive", "scripts", "_shared"),
   },
+  {
+    name: "slack",
+    dir: path.join(REPO_ROOT, "plugins", "slack", "scripts", "_shared"),
+  },
 ];
 
 const USAGE = [
