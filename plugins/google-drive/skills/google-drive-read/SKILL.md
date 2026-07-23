@@ -32,6 +32,7 @@ node /a/b/scripts/read.js <fileId>
 
 - Google Docs は Markdown、Sheets は CSV（先頭シートのみ）、Slides はテキストで stdout に出る
 - PDF・画像などのバイナリは既定でカレントディレクトリ配下の `drive-read/<fileId>/` に保存され、保存パスが表示される。**そのパスを Read ツールで読むこと**
+- PDF の視覚確認などで保存済みファイルから PNG などの派生ファイルを作る場合は、実ファイル保存先を変えず、派生ファイルだけ `.codex/tmp/` 配下に置く。確認後、ユーザーが保持を求めていなければその派生ファイルは `trash` で削除する
 - 「許可フォルダ配下ではありません」と拒否された場合、そのファイルは参照対象外。回避を試みない
 - 「許可フォルダが設定されていません」の場合は、SETUP.md の `config.json` 作成または `allowedFolderIds` 更新をユーザーに案内する
 

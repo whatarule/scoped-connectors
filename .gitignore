@@ -3,3 +3,4 @@
 .codex/
 **/settings.local.json
 .DS_Store
+drive-read/
