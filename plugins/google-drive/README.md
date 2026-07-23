@@ -28,7 +28,8 @@ Drive認証状態を確認して
 このDriveのファイルを読んで https://docs.google.com/document/d/xxxx/edit
 ```
 
-Google Docs は Markdown、Sheets は CSV（先頭シートのみ）、Slides はテキストで取得します。
+Google Docs は Markdown、Slides はテキストで取得します。
+Google Sheets は現在 CSV として**先頭シートのみ**取得します。2枚目以降のシートや全シートの取得は未対応です。
 PDF・画像などはカレントディレクトリ配下の `drive-read/<fileId>/` に保存され、エージェントがそのファイルを読みます。
 
 ### Codex
