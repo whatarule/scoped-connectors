@@ -2,6 +2,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const {
@@ -10,6 +12,9 @@ const {
   sanitizeFileName,
   parseArgs,
 } = require("../read");
+const {
+  writeReadResult,
+} = require("../read/presenter");
 
 // --- extractFileId ---
 
@@ -106,6 +111,41 @@ test("sanitizeFileName: パス区切りを潰し日本語は残す", () => {
   assert.equal(sanitizeFileName("2026年度/Q2\\提案書.docx"), "2026年度_Q2_提案書.docx");
   assert.equal(sanitizeFileName("報告書 v3.pdf"), "報告書 v3.pdf");
   assert.equal(sanitizeFileName(""), "unnamed");
+});
+
+// --- writeReadResult ---
+
+test("writeReadResult: stdout 出力は末尾 newline を補う", () => {
+  let output = "";
+  const result = writeReadResult({
+    buffer: Buffer.from("hello"),
+    plan: { toStdout: true },
+    stdout: { write: (chunk) => { output += chunk; } },
+  });
+  assert.deepEqual(result, { kind: "stdout" });
+  assert.equal(output, "hello\n");
+});
+
+test("writeReadResult: ファイル保存時は保存先メッセージを出す", (t) => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "drive-read-presenter-test-"));
+  t.after(() => {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  });
+  let output = "";
+  const result = writeReadResult({
+    buffer: Buffer.from("pdf-bytes"),
+    plan: { toStdout: false },
+    outDir,
+    fileId: "FILE123",
+    fileName: "レポート/本体.pdf",
+    stdout: { write: (chunk) => { output += chunk; } },
+  });
+
+  assert.equal(result.kind, "file");
+  assert.equal(result.savedPath, path.join(outDir, "FILE123", "レポート_本体.pdf"));
+  assert.equal(fs.readFileSync(result.savedPath, "utf8"), "pdf-bytes");
+  assert.match(output, /保存しました:/);
+  assert.match(output, /Read ツール/);
 });
 
 // --- parseArgs ---
