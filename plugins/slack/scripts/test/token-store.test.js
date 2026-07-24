@@ -24,7 +24,7 @@ describe("detectTokenStore", () => {
   it("既定の Windows helper は _shared の vendored copy を使う", () => {
     assert.match(
       WINDOWS_HELPER.split("\\").join("/"),
-      /plugins\/slack\/scripts\/_shared\/windows-credential\.ps1$/
+      /plugins\/slack\/scripts\/_shared\/token-store\/windows-credential\.ps1$/
     );
   });
 

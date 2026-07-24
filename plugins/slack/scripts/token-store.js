@@ -1,12 +1,12 @@
 "use strict";
 
 const path = require("node:path");
-const { createSecureTokenStore } = require("./_shared/secure-token-store");
+const { createSecureTokenStore } = require("./_shared/token-store");
 
 const SERVICE = "scoped-connectors/slack";
 const ACCOUNT = "default";
 const WINDOWS_TARGET = `${SERVICE}/${ACCOUNT}`;
-const WINDOWS_HELPER = path.join(__dirname, "_shared", "windows-credential.ps1");
+const WINDOWS_HELPER = path.join(__dirname, "_shared", "token-store", "windows-credential.ps1");
 
 const tokenStore = createSecureTokenStore({
   service: SERVICE,

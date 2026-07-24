@@ -12,9 +12,9 @@ const {
   base64Url,
   createPkcePair,
   createState,
-} = require("./_shared/oauth-pkce");
-const { validateAuthorizationCallback: validateAuthorizationCallbackBase } = require("./_shared/oauth-callback");
-const { postFormForJson } = require("./_shared/oauth-http");
+} = require("./_shared/oauth/pkce");
+const { validateAuthorizationCallback: validateAuthorizationCallbackBase } = require("./_shared/oauth/callback");
+const { postFormForJson } = require("./_shared/oauth/http");
 
 const AUTH_URI = "https://slack.com/oauth/v2_user/authorize";
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";

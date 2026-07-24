@@ -7,7 +7,7 @@ const {
   readMacTokenRecord,
   writeMacTokenRecord,
   deleteMacTokenRecord,
-} = require("./secure-token-store-mac");
+} = require("./mac-keychain");
 const {
   isWsl,
   execFileWithInput,
@@ -17,7 +17,7 @@ const {
   readWindowsTokenRecord,
   writeWindowsTokenRecord,
   deleteWindowsTokenRecord,
-} = require("./secure-token-store-windows");
+} = require("./windows-credential-manager");
 
 function createSecureTokenStore(config) {
   const service = config.service;

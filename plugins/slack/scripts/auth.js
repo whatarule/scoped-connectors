@@ -9,8 +9,8 @@ const {
   tokenExpiresSoon,
   hasUsableAccessToken,
   reloadFreshTokenAfterRefreshRace: reloadFreshTokenAfterRefreshRaceBase,
-} = require("./_shared/token-refresh");
-const { postFormForJson } = require("./_shared/oauth-http");
+} = require("./_shared/token/refresh");
+const { postFormForJson } = require("./_shared/oauth/http");
 
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";
 
