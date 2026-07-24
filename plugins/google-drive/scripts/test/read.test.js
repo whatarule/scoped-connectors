@@ -7,15 +7,30 @@ const os = require("node:os");
 const path = require("node:path");
 
 const {
+  USAGE,
+  MAX_MEDIA_BYTES,
+  DEFAULT_OUT_DIR,
   extractFileId,
   resolveReadPlan,
   sanitizeFileName,
   parseArgs,
   readDriveFile,
-} = require("../read");
+} = require("../read/cli");
+const legacyRead = require("../read");
 const {
   writeReadResult,
 } = require("../read/presenter");
+
+test("read.js wrapper: read/cli と同じ API を export する", () => {
+  assert.equal(legacyRead.USAGE, USAGE);
+  assert.equal(legacyRead.MAX_MEDIA_BYTES, MAX_MEDIA_BYTES);
+  assert.equal(legacyRead.DEFAULT_OUT_DIR, DEFAULT_OUT_DIR);
+  assert.equal(legacyRead.extractFileId, extractFileId);
+  assert.equal(legacyRead.resolveReadPlan, resolveReadPlan);
+  assert.equal(legacyRead.sanitizeFileName, sanitizeFileName);
+  assert.equal(legacyRead.parseArgs, parseArgs);
+  assert.equal(legacyRead.readDriveFile, readDriveFile);
+});
 
 // --- extractFileId ---
 
