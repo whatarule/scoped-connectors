@@ -4,13 +4,15 @@ const http = require("node:http");
 const {
   READONLY_SCOPES,
   TOKEN_RECORD_VERSION,
-  missingRequiredScopes,
-  unexpectedGrantedScopes,
 } = require("./auth");
 const {
   describeTokenStore,
   writeTokenRecord,
 } = require("./token-store");
+const {
+  validateGrantedScopes,
+  verifyAllowedGoogleAccount,
+} = require("./policy/google-login");
 const {
   CLIENT_ID_ENV,
   DEFAULT_ALLOWED_DOMAINS,
@@ -97,24 +99,6 @@ function formatTokenEndpointError(message) {
     ].join("\n");
   }
   return `Google token 取得に失敗しました: ${text}`;
-}
-
-function validateGrantedScopes(tokenResponse) {
-  const scopeText = String((tokenResponse && tokenResponse.scope) || "").trim();
-  if (!scopeText) {
-    throw new Error(
-      "Google token response に scope が含まれていません。同意画面で全ての権限を許可してから google-drive-auth で再ログインしてください。"
-    );
-  }
-  const missing = missingRequiredScopes(scopeText);
-  const unexpected = unexpectedGrantedScopes(scopeText);
-  if (missing.length === 0 && unexpected.length === 0) return;
-  const details = [];
-  if (missing.length) details.push(`不足 scope: ${missing.join(", ")}`);
-  if (unexpected.length) details.push(`許可されていない scope: ${unexpected.join(", ")}`);
-  throw new Error(
-    `Google token response の OAuth scope が許可された読み取り専用 scope と一致しません: ${details.join(" / ")}。同意画面で全ての権限を許可してから google-drive-auth で再ログインしてください。`
-  );
 }
 
 function createCallbackServer() {
@@ -239,21 +223,7 @@ async function fetchDriveAboutWithToken(accessToken, fetchImpl = fetch) {
 async function verifyTokenAuthorization(options, tokenResponse, fetchImpl = fetch) {
   const about = await fetchDriveAboutWithToken(tokenResponse.access_token, fetchImpl);
   const user = (about && about.user) || {};
-  const email = String(user.emailAddress || "").trim().toLowerCase();
-  const domain = email.includes("@") ? email.split("@").pop() : "";
-  if (!domain) {
-    throw new Error("Google Drive about.get response からアカウントのメールアドレスを確認できません。");
-  }
-  if (!options.allowedDomains.includes(domain)) {
-    throw new Error(
-      `許可されていない Google アカウントです: ${email}(許可ドメイン: ${options.allowedDomains.join(", ")})`
-    );
-  }
-
-  return {
-    user_email: email,
-    user_name: user.displayName || "",
-  };
+  return verifyAllowedGoogleAccount(user, options.allowedDomains);
 }
 
 function buildTokenRecord(client, data, now = Date.now(), verification = {}) {
