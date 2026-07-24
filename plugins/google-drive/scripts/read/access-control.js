@@ -6,7 +6,7 @@ const {
   FOLDER_ID_PATTERN,
   getConfigPath,
   loadReadSettings,
-} = require("../settings/google-drive");
+} = require("../settings/config");
 const {
   MAX_ANCESTOR_DEPTH,
   verifyFileInAllowedFolders,

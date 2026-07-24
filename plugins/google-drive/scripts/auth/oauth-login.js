@@ -23,7 +23,7 @@ const {
   resolveClientId,
   applyLoginDefaults,
   parseLoginArgs,
-} = require("../settings/google-drive");
+} = require("../settings/config");
 const { promptHiddenInput } = require("./secret-input");
 const {
   base64Url,
