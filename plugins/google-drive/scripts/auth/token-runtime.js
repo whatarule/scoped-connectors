@@ -10,8 +10,8 @@ const {
   hasUsableAccessToken,
   recordChanged,
   reloadFreshTokenAfterRefreshRace: reloadFreshTokenAfterRefreshRaceBase,
-} = require("../_shared/token-refresh");
-const { postFormForJson } = require("../_shared/oauth-http");
+} = require("../_shared/token/refresh");
+const { postFormForJson } = require("../_shared/oauth/http");
 
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
 

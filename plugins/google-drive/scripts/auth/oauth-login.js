@@ -29,9 +29,9 @@ const {
   base64Url,
   createPkcePair,
   createState,
-} = require("../_shared/oauth-pkce");
-const { validateAuthorizationCallback } = require("../_shared/oauth-callback");
-const { postFormForJson } = require("../_shared/oauth-http");
+} = require("../_shared/oauth/pkce");
+const { validateAuthorizationCallback } = require("../_shared/oauth/callback");
+const { postFormForJson } = require("../_shared/oauth/http");
 
 const AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URI = "https://oauth2.googleapis.com/token";

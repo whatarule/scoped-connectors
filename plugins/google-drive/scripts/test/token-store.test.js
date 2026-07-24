@@ -4,6 +4,7 @@ const {
   SERVICE,
   ACCOUNT,
   WINDOWS_TARGET,
+  WINDOWS_HELPER,
   isWsl,
   detectTokenStore,
   describeTokenStore,
@@ -18,6 +19,13 @@ const WSL_ENV = { WSL_DISTRO_NAME: "Ubuntu" };
 describe("detectTokenStore", () => {
   it("SERVICE は scoped-connectors/google-drive", () => {
     assert.equal(SERVICE, "scoped-connectors/google-drive");
+  });
+
+  it("既定の Windows helper は _shared の vendored copy を使う", () => {
+    assert.match(
+      WINDOWS_HELPER.split("\\").join("/"),
+      /plugins\/google-drive\/scripts\/_shared\/token-store\/windows-credential\.ps1$/
+    );
   });
 
   it("macOS では Keychain を使う", () => {
