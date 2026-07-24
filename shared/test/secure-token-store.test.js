@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   createSecureTokenStore,
   isWsl,
-} = require("../scripts/secure-token-store");
+} = require("../scripts/token-store");
 
 const SERVICE = "scoped-connectors/test";
 const ACCOUNT = "default";
