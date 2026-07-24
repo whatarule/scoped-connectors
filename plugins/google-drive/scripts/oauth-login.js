@@ -1,6 +1,5 @@
 "use strict";
 
-const fs = require("node:fs");
 const http = require("node:http");
 const {
   READONLY_SCOPES,
@@ -13,9 +12,16 @@ const {
   writeTokenRecord,
 } = require("./token-store");
 const {
-  CONFIG_PATH_ENV,
+  CLIENT_ID_ENV,
+  DEFAULT_ALLOWED_DOMAINS,
+  DEFAULT_CLIENT_ID,
   DEFAULT_CONFIG_PATH,
-} = require("./allowlist");
+  loadConfigFile,
+  normalizeDomains,
+  resolveClientId,
+  applyLoginDefaults,
+  parseLoginArgs,
+} = require("./settings/google-drive");
 const { promptHiddenInput } = require("./secret-input");
 const {
   base64Url,
@@ -28,12 +34,9 @@ const { postFormForJson } = require("./_shared/oauth-http");
 const AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URI = "https://oauth2.googleapis.com/token";
 const DRIVE_ABOUT_URI = "https://www.googleapis.com/drive/v3/about";
-const CLIENT_ID_ENV = "GOOGLE_DRIVE_CLIENT_ID";
-const DEFAULT_ALLOWED_DOMAINS = ["compass-e.com"];
 // 共有 OAuth client(compass-e.com の内部アプリ)。client_id は公開識別子として同梱する。
 // client secret はディスク(config・JSON・環境変数)に置かず、login 時の対話入力で受け取って
 // Token Record として OS secure store にのみ保存する(refresh は record の値を使う)。
-const DEFAULT_CLIENT_ID = "479244650378-pumfm4d581o9f8qrbsj0jdjuc9qsuh75.apps.googleusercontent.com";
 const USAGE = [
   "使い方: oauth-login.js [--client-id id]",
   "",
@@ -46,80 +49,8 @@ const USAGE = [
   "",
 ].join("\n");
 
-function loadConfigFile(configPath) {
-  try {
-    return JSON.parse(fs.readFileSync(configPath, "utf8"));
-  } catch (err) {
-    if (err.code === "ENOENT") return {};
-    throw new Error(`Google Drive login config を読み取れません: ${configPath}`);
-  }
-}
-
-function normalizeDomains(value) {
-  if (!value) return [];
-  const list = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-      ? value.split(",")
-      : null;
-  if (!list) {
-    throw new Error("allowedDomains は配列またはカンマ区切り文字列で指定してください。");
-  }
-  return list
-    .map((domain) => String(domain).trim().replace(/^@/, "").toLowerCase())
-    .filter(Boolean);
-}
-
-function resolveClientId(parsed, config = {}, env = process.env) {
-  for (const value of [
-    parsed.clientId,
-    env[CLIENT_ID_ENV],
-    config.clientId,
-    config.client_id,
-    DEFAULT_CLIENT_ID,
-  ]) {
-    const clientId = String(value || "").trim();
-    if (clientId) return clientId;
-  }
-  return "";
-}
-
-function applyDefaults(parsed, config = {}, env = process.env) {
-  const allowedDomains = normalizeDomains(
-    env.GOOGLE_DRIVE_ALLOWED_DOMAINS || config.allowedDomains || DEFAULT_ALLOWED_DOMAINS
-  );
-  const clientId = resolveClientId(parsed, config, env);
-
-  return {
-    ...parsed,
-    clientId,
-    allowedDomains,
-  };
-}
-
-function parseArgs(args, env = process.env, configLoader = loadConfigFile) {
-  const configPath = env[CONFIG_PATH_ENV] || DEFAULT_CONFIG_PATH;
-  const parsed = {
-    clientId: "",
-    help: false,
-  };
-
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === "--client-id") {
-      if (!args[i + 1]) throw new Error("--client-id には OAuth client_id を指定してください。");
-      parsed.clientId = args[++i];
-    } else if (arg === "--help" || arg === "-h") {
-      parsed.help = true;
-    } else {
-      throw new Error(`不明なオプションです: ${arg}`);
-    }
-  }
-
-  const options = { ...parsed, configPath };
-  if (options.help) return applyDefaults(options, {}, env);
-  return applyDefaults(options, configLoader(configPath), env);
-}
+const applyDefaults = applyLoginDefaults;
+const parseArgs = parseLoginArgs;
 
 function validateOptions(options) {
   if (!options.allowedDomains || options.allowedDomains.length === 0) {

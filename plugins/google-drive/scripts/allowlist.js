@@ -1,45 +1,17 @@
 "use strict";
 
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-
-const CONFIG_PATH_ENV = "GOOGLE_DRIVE_CONFIG_PATH";
-const DEFAULT_CONFIG_PATH = path.join(os.homedir(), ".config", "drive-api", "config.json");
-const FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const {
+  CONFIG_PATH_ENV,
+  DEFAULT_CONFIG_PATH,
+  FOLDER_ID_PATTERN,
+  getConfigPath,
+  loadReadSettings,
+} = require("./settings/google-drive");
 const MAX_ANCESTOR_DEPTH = 50;
 
-function getConfigPath() {
-  return process.env[CONFIG_PATH_ENV] || DEFAULT_CONFIG_PATH;
-}
-
 function loadAllowlist(configPath = getConfigPath()) {
-  if (!fs.existsSync(configPath)) {
-    return { allowedFolderIds: [] };
-  }
-
-  let config;
-  try {
-    config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  } catch (err) {
-    throw new Error(`${configPath} を JSON として読み込めません: ${err.message}`);
-  }
-
-  const ids = config && config.allowedFolderIds;
-  if (ids === undefined) {
-    return { allowedFolderIds: [] };
-  }
-  if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
-    throw new Error(`${configPath} の allowedFolderIds はフォルダIDの文字列配列にしてください。`);
-  }
-  const invalid = ids.filter((id) => !FOLDER_ID_PATTERN.test(id));
-  if (invalid.length) {
-    throw new Error(
-      `${configPath} の allowedFolderIds に不正なIDが含まれています: ${invalid.join(", ")}`
-    );
-  }
-
-  return { allowedFolderIds: ids };
+  const { allowedFolderIds } = loadReadSettings(configPath);
+  return { allowedFolderIds };
 }
 
 // 渡されたIDから parents を許可フォルダIDに突き当たるまで遡って所属を検証する。
