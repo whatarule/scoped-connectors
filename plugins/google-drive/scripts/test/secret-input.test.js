@@ -2,7 +2,6 @@ const { EventEmitter } = require("node:events");
 const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const { promptHiddenInput } = require("../auth/secret-input");
-const legacySecretInput = require("../secret-input");
 
 class FakeStdin extends EventEmitter {
   constructor({ isTTY = true } = {}) {
@@ -39,12 +38,6 @@ class FakeStderr {
     return this.writes.join("");
   }
 }
-
-describe("legacy secret-input wrapper", () => {
-  it("auth/secret-input と同じ API を export する", () => {
-    assert.equal(legacySecretInput.promptHiddenInput, promptHiddenInput);
-  });
-});
 
 describe("promptHiddenInput", () => {
   it("TTY から Enter までの入力を読み、前後の空白を trim する", async () => {

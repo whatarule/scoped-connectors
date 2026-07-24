@@ -40,7 +40,7 @@ const DRIVE_ABOUT_URI = "https://www.googleapis.com/drive/v3/about";
 // client secret はディスク(config・JSON・環境変数)に置かず、login 時の対話入力で受け取って
 // Token Record として OS secure store にのみ保存する(refresh は record の値を使う)。
 const USAGE = [
-  "使い方: oauth-login.js [--client-id id]",
+  "使い方: google-drive-auth login [--client-id id]",
   "",
   "Google OAuth PKCE でログインして token を OS secure store に保存します。",
   "既定では同梱の共有 client_id(compass-e.com の内部アプリ)を使います。",

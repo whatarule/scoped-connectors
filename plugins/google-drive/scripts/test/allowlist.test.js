@@ -7,7 +7,6 @@ const os = require("node:os");
 const path = require("node:path");
 
 const accessControl = require("../read/access-control");
-const legacyAllowlist = require("../allowlist");
 
 const { loadAllowlist, verifyFileInAllowlist } = accessControl;
 
@@ -17,11 +16,6 @@ function writeTempConfig(content) {
   fs.writeFileSync(configPath, content);
   return configPath;
 }
-
-test("legacy allowlist wrapper: read/access-control と同じ API を export する", () => {
-  assert.equal(legacyAllowlist.loadAllowlist, loadAllowlist);
-  assert.equal(legacyAllowlist.verifyFileInAllowlist, verifyFileInAllowlist);
-});
 
 test("loadAllowlist: 正常な config を読み込む", () => {
   const configPath = writeTempConfig('{ "allowedFolderIds": ["abc123", "DEF-456_x"] }');

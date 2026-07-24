@@ -20,17 +20,9 @@ const {
   verifyTokenAuthorization,
   buildTokenRecord,
 } = require("../auth/oauth-login");
-const legacyOauthLogin = require("../oauth-login");
 
 const FULL_SCOPE = READONLY_SCOPES.join(" ");
 const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";
-
-describe("legacy oauth-login wrapper", () => {
-  it("auth/oauth-login と同じ API を export する", () => {
-    assert.equal(legacyOauthLogin.parseArgs, parseArgs);
-    assert.equal(legacyOauthLogin.buildTokenRecord, buildTokenRecord);
-  });
-});
 
 describe("normalizeDomains", () => {
   it("配列を trim・小文字化・@除去して正規化する", () => {

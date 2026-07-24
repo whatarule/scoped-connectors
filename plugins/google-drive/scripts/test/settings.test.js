@@ -19,7 +19,6 @@ const {
   normalizeAllowedFolderIds,
   loadReadSettings,
 } = require("../settings/config");
-const legacySettings = require("../settings/google-drive");
 
 function writeTempConfig(content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "drive-settings-test-"));
@@ -27,11 +26,6 @@ function writeTempConfig(content) {
   fs.writeFileSync(configPath, content);
   return configPath;
 }
-
-test("legacy settings/google-drive wrapper: settings/config と同じ API を export する", () => {
-  assert.equal(legacySettings.getConfigPath, getConfigPath);
-  assert.equal(legacySettings.loadReadSettings, loadReadSettings);
-});
 
 test("getConfigPath: env が config path 既定値より優先される", () => {
   assert.equal(getConfigPath({ [CONFIG_PATH_ENV]: "/tmp/drive-config.json" }), "/tmp/drive-config.json");

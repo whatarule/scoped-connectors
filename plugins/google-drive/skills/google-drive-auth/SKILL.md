@@ -14,30 +14,30 @@ Google OAuth PKCE で読み取り専用 token を取得し、OS secure store の
 
 スクリプトをフルパスリテラルで実行する。変数展開は使わない。
 スクリプトはこの SKILL.md の2つ上のディレクトリの `scripts/` にある。
-例えばこの SKILL.md が `/a/b/skills/google-drive-auth/SKILL.md` なら、スクリプトは `/a/b/scripts/google-drive-auth.js`。
+例えばこの SKILL.md が `/a/b/skills/google-drive-auth/SKILL.md` なら、スクリプトは `/a/b/scripts/auth.js`。
 
 引数なしは login として扱います。
 
 ```bash
-node /a/b/scripts/google-drive-auth.js
+node /a/b/scripts/auth.js
 ```
 
 ログインを明示する場合:
 
 ```bash
-node /a/b/scripts/google-drive-auth.js login
+node /a/b/scripts/auth.js login
 ```
 
 状態確認:
 
 ```bash
-node /a/b/scripts/google-drive-auth.js status
+node /a/b/scripts/auth.js status
 ```
 
 保存済み token record の削除:
 
 ```bash
-node /a/b/scripts/google-drive-auth.js clear
+node /a/b/scripts/auth.js clear
 ```
 
 `clear` は Google 側の token revoke ではなく、OS secure store の保存 token record だけを削除します。
@@ -56,7 +56,7 @@ settings の `sandbox.excludedCommands` にこのスクリプトが登録され�
 ### Codex の場合
 
 Codex の `exec_command` では `sandbox_permissions: "require_escalated"` を指定し、`justification` には「Google Drive token を OS secure store で管理するため」と書いてください。
-可能なら `prefix_rule` に `["node", "/a/b/scripts/google-drive-auth.js"]` を指定してください。`/a/b/scripts/google-drive-auth.js` は実際に実行するフルパスに置き換えてください。
+可能なら `prefix_rule` に `["node", "/a/b/scripts/auth.js"]` を指定してください。`/a/b/scripts/auth.js` は実際に実行するフルパスに置き換えてください。
 
 既定では同梱の共有 client_id（compass-e.com の内部アプリ）を使う。login 前に SETUP.md の「設定ファイルの作成」が完了している前提です。
 client secret は login 時にユーザーが対話入力する（値は社内の秘密情報共有先から取得。ファイル・環境変数・CLI 引数には置かない）。
@@ -65,7 +65,7 @@ client secret は login 時にユーザーが対話入力する（値は社内�
 
 ```
 以下をターミナルで実行してください:
-node /a/b/scripts/google-drive-auth.js login
+node /a/b/scripts/auth.js login
 ```
 
 （`/a/b` は実際のインストールパスに置き換える。相対パスや `plugins/...` 始まりのパスは利用者の環境では動かないので使わない）

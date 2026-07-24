@@ -6,17 +6,9 @@ const {
   extractEmailDomain,
   verifyAllowedGoogleAccount,
 } = require("../auth/login-policy");
-const legacyLoginPolicy = require("../policy/google-login");
 
 const FULL_SCOPE = READONLY_SCOPES.join(" ");
 const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";
-
-describe("legacy google-login policy wrapper", () => {
-  it("auth/login-policy と同じ API を export する", () => {
-    assert.equal(legacyLoginPolicy.validateGrantedScopes, validateGrantedScopes);
-    assert.equal(legacyLoginPolicy.verifyAllowedGoogleAccount, verifyAllowedGoogleAccount);
-  });
-});
 
 describe("validateGrantedScopes", () => {
   it("必要 scope が揃っていれば成功する", () => {

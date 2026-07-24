@@ -60,11 +60,11 @@ login は client secret の対話入力に TTY が必要なため、エージェ
 
 ```sh
 # エージェントが提示するコマンドの形(パスは環境ごとに異なる)
-node <プラグインのインストールパス>/scripts/google-drive-auth.js login
+node <プラグインのインストールパス>/scripts/auth.js login
 ```
 
 インストールパスを自分で確認する場合は `~/.claude/plugins/installed_plugins.json` の `installPath` を参照してください
-(このリポジトリを直接 checkout している場合は `node plugins/google-drive/scripts/google-drive-auth.js login` で実行できます)。
+(このリポジトリを直接 checkout している場合は `node plugins/google-drive/scripts/auth.js login` で実行できます)。
 
 最初に client secret の対話入力を求められます(値は社内の秘密情報共有先から取得。入力は表示されません)。
 続いて表示された URL をブラウザで開いて許可してください。
@@ -83,7 +83,7 @@ Google の許可画面で拒否される場合は、管理者に確認してく�
 
 このプラグインは token の保存・読み取りに OS secure store を使います。
 Claude Code / Codex では OS secure store の保存・読み取りが sandbox 内で失敗します。
-このプラグインの skill（`google-drive-auth.js` と `read.js`）は sandbox 外でスクリプトを実行する前提です。
+このプラグインの skill（`auth.js` と `read.js`）は sandbox 外でスクリプトを実行する前提です。
 初回実行時に sandbox 外実行の承認を求められたら許可してください。
 
 ### Claude Code の場合
@@ -105,7 +105,7 @@ Keychain / Credential Manager を使うコマンドは sandbox 外実行が必�
 各 `SKILL.md` は `sandbox_permissions: "require_escalated"` と script ごとの `prefix_rule` を使うように記載しています。
 
 初回承認時に prefix rule を保存すると、同じ script の次回以降の実行で承認を省略しやすくなります。
-対象 script は `google-drive-auth.js`、`read.js` です。
+対象 script は `auth.js`、`read.js` です。
 
 ## 参考: 設定の上書き
 
@@ -135,8 +135,8 @@ Keychain / Credential Manager を使うコマンドは sandbox 外実行が必�
 インストール環境ではスキル(`/google-drive-auth status` 等)を使うか、§3 の方法でフルパスに読み替えてください。
 
 ```sh
-node plugins/google-drive/scripts/google-drive-auth.js status
-node plugins/google-drive/scripts/google-drive-auth.js clear
+node plugins/google-drive/scripts/auth.js status
+node plugins/google-drive/scripts/auth.js clear
 ```
 
 `status` は保存状態と `about.get` の live check 結果を表示します。access token は表示しません。

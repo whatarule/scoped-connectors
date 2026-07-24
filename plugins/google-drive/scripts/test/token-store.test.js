@@ -12,17 +12,8 @@ const {
   writeTokenRecord,
   deleteTokenRecord,
 } = require("../auth/token-store");
-const legacyTokenStore = require("../token-store");
 
 const WSL_ENV = { WSL_DISTRO_NAME: "Ubuntu" };
-
-describe("legacy token-store wrapper", () => {
-  it("auth/token-store と同じ API を export する", () => {
-    assert.equal(legacyTokenStore.SERVICE, SERVICE);
-    assert.equal(legacyTokenStore.describeTokenStore, describeTokenStore);
-    assert.equal(legacyTokenStore.readTokenRecord, readTokenRecord);
-  });
-});
 
 describe("detectTokenStore", () => {
   it("SERVICE は scoped-connectors/google-drive", () => {

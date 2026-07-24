@@ -14,7 +14,7 @@ const {
 } = require("./token-store");
 
 const LOGIN_OPTIONS_USAGE = LOGIN_USAGE.replace(
-  "使い方: oauth-login.js ",
+  "使い方: google-drive-auth login ",
   "使い方: google-drive-auth [login] "
 );
 
