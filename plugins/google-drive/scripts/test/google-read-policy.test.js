@@ -6,7 +6,7 @@ const assert = require("node:assert/strict");
 const {
   MAX_ANCESTOR_DEPTH,
   verifyFileInAllowedFolders,
-} = require("../policy/google-read");
+} = require("../read/access-policy");
 
 function makeGetParents(parentsMap, options = {}) {
   const calls = [];

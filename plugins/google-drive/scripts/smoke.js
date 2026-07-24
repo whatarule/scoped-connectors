@@ -2,7 +2,7 @@
 
 const { fetchDriveApi, fetchDriveApiRaw } = require("./common");
 const { getStatus, runAuth } = require("./auth/cli");
-const { loadAllowlist, verifyFileInAllowlist } = require("./allowlist");
+const { loadAllowlist, verifyFileInAllowlist } = require("./read/access-control");
 const { readDriveFile } = require("./read");
 
 const DEFAULT_COUNT = 3;

@@ -1,6 +1,11 @@
 "use strict";
 
-const { getConfigPath, loadAllowlist, verifyFileInAllowlist, FOLDER_ID_PATTERN } = require("../allowlist");
+const {
+  getConfigPath,
+  loadAllowlist,
+  verifyFileInAllowlist,
+  FOLDER_ID_PATTERN,
+} = require("./access-control");
 const defaultDriveClient = require("../providers/drive-client");
 const {
   GOOGLE_SHEET,
