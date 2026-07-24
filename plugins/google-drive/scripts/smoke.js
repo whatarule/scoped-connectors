@@ -3,7 +3,7 @@
 const { fetchDriveApi, fetchDriveApiRaw } = require("./common");
 const { getStatus, runAuth } = require("./google-drive-auth");
 const { loadAllowlist, verifyFileInAllowlist } = require("./allowlist");
-const { extractFileId, resolveReadPlan } = require("./read");
+const { readDriveFile } = require("./read");
 
 const DEFAULT_COUNT = 3;
 const MAX_COUNT = 10;
@@ -104,6 +104,11 @@ function buildAboutStep(status) {
   };
 }
 
+function readResultContentType(result) {
+  if (result.plan && result.plan.kind === "export") return result.plan.exportMime || "unknown";
+  return (result.meta && result.meta.mimeType) || "unknown";
+}
+
 async function runSmoke(options = {}, deps = {}) {
   const smokeOptions = { ...parseArgs([]), ...options, help: false };
   const smokeDeps = {
@@ -113,8 +118,7 @@ async function runSmoke(options = {}, deps = {}) {
     fetchDriveApiRaw,
     loadAllowlist,
     verifyFileInAllowlist,
-    extractFileId,
-    resolveReadPlan,
+    readDriveFile,
     ...deps,
   };
 
@@ -166,40 +170,22 @@ async function runSmoke(options = {}, deps = {}) {
   }
 
   if (smokeOptions.file) {
-    const { id: fileId, isFolderUrl } = smokeDeps.extractFileId(smokeOptions.file);
-    if (isFolderUrl) {
-      throw new Error("--file にはフォルダではなくファイルの URL / ID を指定してください。");
-    }
-
-    const fetchJson = async (apiPath, params) => (await smokeDeps.fetchDriveApi(apiPath, params)).data;
-    const verdict = await smokeDeps.verifyFileInAllowlist(fileId, { allowedFolderIds, fetchJson });
-    if (!verdict.allowed) {
-      throw new Error(`--file のファイルは参照できません: ${verdict.reason}`);
-    }
-
-    const meta = (
-      await smokeDeps.fetchDriveApi(`files/${encodeURIComponent(fileId)}`, {
-        fields: "id,name,mimeType,size",
-        supportsAllDrives: true,
-      })
-    ).data;
-    const plan = smokeDeps.resolveReadPlan(meta.mimeType, null);
-    const raw =
-      plan.kind === "export"
-        ? await smokeDeps.fetchDriveApiRaw(`files/${encodeURIComponent(fileId)}/export`, {
-            mimeType: plan.exportMime,
-          })
-        : await smokeDeps.fetchDriveApiRaw(`files/${encodeURIComponent(fileId)}`, {
-            alt: "media",
-            supportsAllDrives: true,
-          });
+    const result = await smokeDeps.readDriveFile(
+      { target: smokeOptions.file, format: null, force: true },
+      {
+        loadAllowlist: () => ({ allowedFolderIds }),
+        verifyFileInAllowlist: smokeDeps.verifyFileInAllowlist,
+        fetchDriveApi: smokeDeps.fetchDriveApi,
+        fetchDriveApiRaw: smokeDeps.fetchDriveApiRaw,
+      }
+    );
     steps.push({
       name: "read",
       ok: true,
-      file: truncateText(meta.name || "unnamed", 60),
-      mimeType: meta.mimeType || "unknown",
-      bytes: raw.buffer.length,
-      contentType: raw.contentType || "unknown",
+      file: truncateText(result.meta.name || "unnamed", 60),
+      mimeType: result.meta.mimeType || "unknown",
+      bytes: result.buffer.length,
+      contentType: readResultContentType(result),
     });
   }
 
@@ -272,6 +258,7 @@ module.exports = {
   truncateText,
   ensureStoredToken,
   buildAboutStep,
+  readResultContentType,
   runSmoke,
   formatSmokeReport,
 };

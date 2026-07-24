@@ -91,11 +91,6 @@ describe("runSmoke", () => {
         calls.push({ fn: "verifyFileInAllowlist", fileId });
         return { allowed: true, reason: "" };
       },
-      extractFileId: (input) => {
-        calls.push({ fn: "extractFileId", input });
-        return { id: "FILE1", isFolderUrl: false };
-      },
-      resolveReadPlan: () => ({ kind: "export", exportMime: "text/markdown", toStdout: true, ext: ".md" }),
       fetchDriveApi: async (path, params = {}) => {
         calls.push({ fn: "fetchDriveApi", path, params });
         if (path === "files") {
@@ -149,7 +144,7 @@ describe("runSmoke", () => {
 
     assert.deepEqual(
       deps.calls.map((call) => call.fn),
-      ["extractFileId", "verifyFileInAllowlist", "fetchDriveApi", "fetchDriveApiRaw"]
+      ["verifyFileInAllowlist", "fetchDriveApi", "fetchDriveApiRaw"]
     );
     const readStep = report.steps.find((step) => step.name === "read");
     assert.equal(readStep.bytes, Buffer.byteLength("# secret ya29.hidden"));
