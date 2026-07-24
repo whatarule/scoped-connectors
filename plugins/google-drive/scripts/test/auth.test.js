@@ -14,7 +14,7 @@ const {
   isRefreshReauthError,
   refreshTokenRecord,
   tokenExpiresSoon,
-} = require("../auth");
+} = require("../auth/token-runtime");
 
 const FULL_SCOPE = READONLY_SCOPES.join(" ");
 const OVERBROAD_SCOPE = "https://www.googleapis.com/auth/drive";

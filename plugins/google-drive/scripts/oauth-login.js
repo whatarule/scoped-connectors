@@ -4,7 +4,7 @@ const http = require("node:http");
 const {
   READONLY_SCOPES,
   TOKEN_RECORD_VERSION,
-} = require("./auth");
+} = require("./auth/token-runtime");
 const {
   describeTokenStore,
   writeTokenRecord,

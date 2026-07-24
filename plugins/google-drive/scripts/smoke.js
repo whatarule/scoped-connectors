@@ -1,7 +1,7 @@
 "use strict";
 
 const { fetchDriveApi, fetchDriveApiRaw } = require("./common");
-const { getStatus, runAuth } = require("./google-drive-auth");
+const { getStatus, runAuth } = require("./auth/cli");
 const { loadAllowlist, verifyFileInAllowlist } = require("./allowlist");
 const { readDriveFile } = require("./read");
 

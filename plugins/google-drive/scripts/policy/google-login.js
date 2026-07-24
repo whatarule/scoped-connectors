@@ -3,7 +3,7 @@
 const {
   missingRequiredScopes,
   unexpectedGrantedScopes,
-} = require("../auth");
+} = require("../auth/token-runtime");
 
 function validateGrantedScopes(tokenResponse) {
   const scopeText = String((tokenResponse && tokenResponse.scope) || "").trim();

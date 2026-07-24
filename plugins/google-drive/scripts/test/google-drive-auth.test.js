@@ -8,7 +8,8 @@ const {
   clearToken,
   formatClearResult,
   runAuth,
-} = require("../google-drive-auth");
+} = require("../auth");
+const legacyAuth = require("../google-drive-auth");
 
 const STORE_DESCRIPTION = "macOS Keychain (scoped-connectors/google-drive/default)";
 
@@ -58,6 +59,13 @@ describe("parseAuthArgs", () => {
 
   it("不明なサブコマンドは拒否する", () => {
     assert.throws(() => parseAuthArgs(["logout"]), /不明なサブコマンド/);
+  });
+});
+
+describe("google-drive-auth compatibility wrapper", () => {
+  it("canonical auth script と同じ API を export する", () => {
+    assert.equal(legacyAuth.runAuth, runAuth);
+    assert.equal(legacyAuth.getStatus, getStatus);
   });
 });
 

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   READONLY_SCOPES,
   TOKEN_RECORD_VERSION,
-} = require("../auth");
+} = require("../auth/token-runtime");
 const {
   DEFAULT_ALLOWED_DOMAINS,
   DEFAULT_CLIENT_ID,
