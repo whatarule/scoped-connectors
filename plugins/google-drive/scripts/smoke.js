@@ -1,6 +1,6 @@
 "use strict";
 
-const { fetchDriveApi, fetchDriveApiRaw } = require("./common");
+const { fetchDriveApi, fetchDriveApiRaw } = require("./providers/drive-http");
 const { getStatus, runAuth } = require("./auth/cli");
 const { loadAllowlist, verifyFileInAllowlist } = require("./read/access-control");
 const { readDriveFile } = require("./read");

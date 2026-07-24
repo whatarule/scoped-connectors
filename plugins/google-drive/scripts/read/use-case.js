@@ -6,7 +6,7 @@ const {
   verifyFileInAllowlist,
   FOLDER_ID_PATTERN,
 } = require("./access-control");
-const defaultDriveClient = require("../providers/drive-client");
+const defaultDriveClient = require("../providers/drive-files");
 const {
   GOOGLE_SHEET,
   MAX_MEDIA_BYTES,

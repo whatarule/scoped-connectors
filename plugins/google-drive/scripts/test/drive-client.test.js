@@ -7,7 +7,13 @@ const {
   FILE_METADATA_FIELDS,
   filePath,
   createDriveClient,
-} = require("../providers/drive-client");
+} = require("../providers/drive-files");
+const legacyDriveClient = require("../providers/drive-client");
+
+test("legacy drive-client wrapper: drive-files と同じ API を export する", () => {
+  assert.equal(legacyDriveClient.createDriveClient, createDriveClient);
+  assert.equal(legacyDriveClient.filePath, filePath);
+});
 
 test("filePath: fileId を Drive files path 用に encode する", () => {
   assert.equal(filePath("abc/def"), "files/abc%2Fdef");
