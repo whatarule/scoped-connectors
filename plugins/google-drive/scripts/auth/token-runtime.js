@@ -3,7 +3,7 @@
 const {
   readTokenRecord,
   writeTokenRecord,
-} = require("../token-store");
+} = require("./token-store");
 const {
   DEFAULT_REFRESH_WINDOW_MS,
   tokenExpiresSoon,

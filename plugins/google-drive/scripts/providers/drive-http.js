@@ -9,7 +9,7 @@ const {
   assertRequiredScopes,
   getGoogleDriveAccessToken,
 } = require("../auth/token-runtime");
-const { describeTokenStore } = require("../token-store");
+const { describeTokenStore } = require("../auth/token-store");
 
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3/";
 

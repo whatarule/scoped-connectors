@@ -5,13 +5,13 @@ const {
   fetchDriveAboutWithToken,
   login: oauthLogin,
   parseArgs: parseLoginArgs,
-} = require("../oauth-login");
+} = require("./oauth-login");
 const { getGoogleDriveAccessToken } = require("./token-runtime");
 const {
   deleteTokenRecord,
   describeTokenStore,
   readTokenRecord,
-} = require("../token-store");
+} = require("./token-store");
 
 const LOGIN_OPTIONS_USAGE = LOGIN_USAGE.replace(
   "使い方: oauth-login.js ",
