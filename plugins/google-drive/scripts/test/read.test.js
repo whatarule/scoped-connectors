@@ -11,6 +11,7 @@ const {
   resolveReadPlan,
   sanitizeFileName,
   parseArgs,
+  readDriveFile,
 } = require("../read");
 const {
   writeReadResult,
@@ -146,6 +147,104 @@ test("writeReadResult: ファイル保存時は保存先メッセージを出す
   assert.equal(fs.readFileSync(result.savedPath, "utf8"), "pdf-bytes");
   assert.match(output, /保存しました:/);
   assert.match(output, /Read ツール/);
+});
+
+// --- readDriveFile ---
+
+test("readDriveFile: allowlist 検証後に Google native export を取得する", async () => {
+  const calls = [];
+  const result = await readDriveFile({
+    target: "FILE123",
+    format: null,
+    force: false,
+  }, {
+    loadAllowlist: () => ({ allowedFolderIds: ["FOLDER1"] }),
+    verifyFileInAllowlist: async (fileId, { allowedFolderIds }) => {
+      calls.push(`verify:${fileId}:${allowedFolderIds.join(",")}`);
+      return { allowed: true, reason: "" };
+    },
+    fetchDriveApi: async (apiPath, params) => {
+      calls.push(`json:${apiPath}`);
+      assert.equal(apiPath, "files/FILE123");
+      assert.deepEqual(params, {
+        fields: "id,name,mimeType,size",
+        supportsAllDrives: true,
+      });
+      return {
+        data: {
+          id: "FILE123",
+          name: "Doc",
+          mimeType: "application/vnd.google-apps.document",
+          size: "",
+        },
+      };
+    },
+    fetchDriveApiRaw: async (apiPath, params) => {
+      calls.push(`raw:${apiPath}`);
+      assert.equal(apiPath, "files/FILE123/export");
+      assert.deepEqual(params, { mimeType: "text/markdown" });
+      return { buffer: Buffer.from("# Doc\n") };
+    },
+  });
+
+  assert.deepEqual(calls, [
+    "verify:FILE123:FOLDER1",
+    "json:files/FILE123",
+    "raw:files/FILE123/export",
+  ]);
+  assert.equal(result.fileId, "FILE123");
+  assert.equal(result.meta.name, "Doc");
+  assert.equal(result.plan.kind, "export");
+  assert.equal(result.buffer.toString("utf8"), "# Doc\n");
+  assert.deepEqual(result.warnings, []);
+});
+
+test("readDriveFile: Sheets export は先頭シートのみ warning を返す", async () => {
+  const result = await readDriveFile({
+    target: "SHEET123",
+    format: null,
+    force: false,
+  }, {
+    loadAllowlist: () => ({ allowedFolderIds: ["FOLDER1"] }),
+    verifyFileInAllowlist: async () => ({ allowed: true, reason: "" }),
+    fetchDriveApi: async () => ({
+      data: {
+        id: "SHEET123",
+        name: "Sheet",
+        mimeType: "application/vnd.google-apps.spreadsheet",
+        size: "",
+      },
+    }),
+    fetchDriveApiRaw: async () => ({ buffer: Buffer.from("a,b\n") }),
+  });
+
+  assert.equal(result.plan.exportMime, "text/csv");
+  assert.deepEqual(result.warnings, ["注: Sheets の export は先頭シートのみです。"]);
+});
+
+test("readDriveFile: media がサイズ上限を超えたら --force なしでは拒否する", async () => {
+  await assert.rejects(
+    () => readDriveFile({
+      target: "PDF123",
+      format: null,
+      force: false,
+    }, {
+      loadAllowlist: () => ({ allowedFolderIds: ["FOLDER1"] }),
+      verifyFileInAllowlist: async () => ({ allowed: true, reason: "" }),
+      fetchDriveApi: async () => ({
+        data: {
+          id: "PDF123",
+          name: "large.pdf",
+          mimeType: "application/pdf",
+          size: String(51 * 1024 * 1024),
+        },
+      }),
+      fetchDriveApiRaw: async () => {
+        throw new Error("fetchDriveApiRaw should not be called");
+      },
+    }),
+    /--force/
+  );
 });
 
 // --- parseArgs ---
