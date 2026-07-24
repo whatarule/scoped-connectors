@@ -1,7 +1,7 @@
 "use strict";
 
-const { fetchDriveApi, fetchDriveApiRaw } = require("../common");
 const { getConfigPath, loadAllowlist, verifyFileInAllowlist, FOLDER_ID_PATTERN } = require("../allowlist");
+const defaultDriveClient = require("../providers/drive-client");
 const {
   GOOGLE_SHEET,
   MAX_MEDIA_BYTES,
@@ -59,8 +59,10 @@ function buildMissingAllowlistError(configPath) {
 }
 
 async function readDriveFile(options, deps = {}) {
-  const fetchDriveApiImpl = deps.fetchDriveApi || fetchDriveApi;
-  const fetchDriveApiRawImpl = deps.fetchDriveApiRaw || fetchDriveApiRaw;
+  const driveClient = deps.driveClient || defaultDriveClient.createDriveClient({
+    fetchDriveApi: deps.fetchDriveApi,
+    fetchDriveApiRaw: deps.fetchDriveApiRaw,
+  });
   const getConfigPathImpl = deps.getConfigPath || getConfigPath;
   const loadAllowlistImpl = deps.loadAllowlist || loadAllowlist;
   const verifyFileInAllowlistImpl = deps.verifyFileInAllowlist || verifyFileInAllowlist;
@@ -75,29 +77,20 @@ async function readDriveFile(options, deps = {}) {
     throw buildMissingAllowlistError(getConfigPathImpl());
   }
 
-  const fetchJson = async (apiPath, params) => (await fetchDriveApiImpl(apiPath, params)).data;
+  const fetchJson = (apiPath, params) => driveClient.fetchJson(apiPath, params);
   const verdict = await verifyFileInAllowlistImpl(fileId, { allowedFolderIds, fetchJson });
   if (!verdict.allowed) {
     throw new Error(`このファイルは参照できません: ${verdict.reason}`);
   }
 
-  const meta = (
-    await fetchDriveApiImpl(`files/${encodeURIComponent(fileId)}`, {
-      fields: "id,name,mimeType,size",
-      supportsAllDrives: true,
-    })
-  ).data;
+  const meta = await driveClient.getFileMetadata(fileId);
 
   const plan = resolveReadPlan(meta.mimeType, options.format);
   const warnings = [];
 
   let buffer;
   if (plan.kind === "export") {
-    buffer = (
-      await fetchDriveApiRawImpl(`files/${encodeURIComponent(fileId)}/export`, {
-        mimeType: plan.exportMime,
-      })
-    ).buffer;
+    buffer = await driveClient.exportFile(fileId, plan.exportMime);
     if (meta.mimeType === GOOGLE_SHEET) {
       warnings.push("注: Sheets の export は先頭シートのみです。");
     }
@@ -108,12 +101,7 @@ async function readDriveFile(options, deps = {}) {
         `ファイルサイズが ${Math.round(size / 1024 / 1024)}MB あります。取得する場合は --force を付けてください。`
       );
     }
-    buffer = (
-      await fetchDriveApiRawImpl(`files/${encodeURIComponent(fileId)}`, {
-        alt: "media",
-        supportsAllDrives: true,
-      })
-    ).buffer;
+    buffer = await driveClient.downloadFile(fileId);
   }
 
   return {
