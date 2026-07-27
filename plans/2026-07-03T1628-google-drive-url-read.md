@@ -55,7 +55,7 @@ node read.js <fileId または Drive URL> [--out <dir>] [--format md|txt|csv|pdf
 | Google Sheets | export `text/csv`（先頭シートのみ。注記を出力） | stdout |
 | Google Slides | export `text/plain` | stdout |
 | テキスト系 | `alt=media` | stdout |
-| PDF・画像・Office 等 | `alt=media` → ファイル保存（デフォルト: カレントディレクトリ配下の `drive-read/<fileId>/`） | 保存パスを表示（Read ツールで読む） |
+| PDF・画像・Office 等 | `alt=media` → ファイル保存（デフォルト: カレントディレクトリ配下の `drive-read/`。同名ファイルがある場合だけファイル名末尾に fileId を付ける） | 保存パスを表示（Read ツールで読む） |
 
 - export 10MB 上限超過はエラーで案内。alt=media は 50MB 超を `--force` なしで拒否
 - access token は出力しない

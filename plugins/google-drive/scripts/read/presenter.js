@@ -12,10 +12,19 @@ function sanitizeFileName(name) {
   return cleaned || "unnamed";
 }
 
+function appendFileIdSuffix(fileName, fileId) {
+  const ext = path.extname(fileName);
+  const base = ext ? fileName.slice(0, -ext.length) : fileName;
+  return `${base}-${sanitizeFileName(fileId)}${ext}`;
+}
+
 function saveToFile(outDir, fileId, fileName, buffer) {
-  const dir = path.join(outDir, fileId);
-  fs.mkdirSync(dir, { recursive: true });
-  const filePath = path.join(dir, sanitizeFileName(fileName));
+  fs.mkdirSync(outDir, { recursive: true });
+  const sanitizedName = sanitizeFileName(fileName);
+  const defaultPath = path.join(outDir, sanitizedName);
+  const filePath = fs.existsSync(defaultPath)
+    ? path.join(outDir, appendFileIdSuffix(sanitizedName, fileId))
+    : defaultPath;
   fs.writeFileSync(filePath, buffer);
   return filePath;
 }

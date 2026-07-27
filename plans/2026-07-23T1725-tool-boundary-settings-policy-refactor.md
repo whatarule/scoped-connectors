@@ -192,7 +192,7 @@ plugins/google-drive/scripts/read/presenter.js
 
 - text buffer を stdout に出す
 - 末尾 newline を保証する
-- binary を `drive-read/<fileId>/` に保存する
+- binary を `drive-read/` に保存し、同名衝突時だけ fileId suffix を付ける
 - 保存先メッセージを出す
 - warning を stderr に出す
 
@@ -341,7 +341,7 @@ node --test plugins/google-drive/scripts/test/*.test.js
 - [ ] Existing `/google-drive-read` skill command examples still work
 - [ ] `read.js <Sheets URL>` still uses Drive CSV export and first sheet behavior
 - [ ] `--format pdf` still saves a file
-- [ ] binary files still save to `drive-read/<fileId>/`
+- [ ] binary files save to `drive-read/<fileName>` and add fileId suffix only on collision
 - [ ] `allowedFolderIds` fail closed behavior is unchanged
 - [ ] token values never appear in stdout / stderr
 - [ ] `shared/scripts` is untouched in Phase 1 and Phase 2

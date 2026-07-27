@@ -158,10 +158,33 @@ test("writeReadResult: ファイル保存時は保存先メッセージを出す
   });
 
   assert.equal(result.kind, "file");
-  assert.equal(result.savedPath, path.join(outDir, "FILE123", "レポート_本体.pdf"));
+  assert.equal(result.savedPath, path.join(outDir, "レポート_本体.pdf"));
   assert.equal(fs.readFileSync(result.savedPath, "utf8"), "pdf-bytes");
   assert.match(output, /保存しました:/);
   assert.match(output, /Read ツール/);
+});
+
+test("writeReadResult: 同名ファイルがある場合だけ fileId suffix を付ける", (t) => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "drive-read-presenter-test-"));
+  t.after(() => {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  });
+  const existingPath = path.join(outDir, "レポート_本体.pdf");
+  fs.writeFileSync(existingPath, "existing");
+
+  const result = writeReadResult({
+    buffer: Buffer.from("new-pdf-bytes"),
+    plan: { toStdout: false },
+    outDir,
+    fileId: "FILE123",
+    fileName: "レポート/本体.pdf",
+    stdout: { write: () => {} },
+  });
+
+  assert.equal(result.kind, "file");
+  assert.equal(result.savedPath, path.join(outDir, "レポート_本体-FILE123.pdf"));
+  assert.equal(fs.readFileSync(existingPath, "utf8"), "existing");
+  assert.equal(fs.readFileSync(result.savedPath, "utf8"), "new-pdf-bytes");
 });
 
 // --- readDriveFile ---
