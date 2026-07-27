@@ -3,17 +3,14 @@
 const {
   createMacTokenStore,
   describeMacTokenStore,
-  decodeKeychainPayload,
   readMacTokenRecord,
   writeMacTokenRecord,
   deleteMacTokenRecord,
 } = require("./mac-keychain");
 const {
   isWsl,
-  execFileWithInput,
   createWindowsTokenStore,
   describeWindowsTokenStore,
-  resolveWindowsHelperPath,
   readWindowsTokenRecord,
   writeWindowsTokenRecord,
   deleteWindowsTokenRecord,
@@ -79,12 +76,7 @@ function createSecureTokenStore(config) {
   }
 
   return {
-    isWsl,
-    detectTokenStore,
     describeTokenStore,
-    decodeKeychainPayload,
-    execFileWithInput,
-    resolveWindowsHelperPath,
     readTokenRecord,
     writeTokenRecord,
     deleteTokenRecord,
@@ -93,7 +85,4 @@ function createSecureTokenStore(config) {
 
 module.exports = {
   createSecureTokenStore,
-  isWsl,
-  decodeKeychainPayload,
-  execFileWithInput,
 };
