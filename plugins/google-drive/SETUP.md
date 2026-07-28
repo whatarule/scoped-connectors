@@ -66,7 +66,13 @@ node <プラグインのインストールパス>/scripts/auth.js login
 インストールパスを自分で確認する場合は `~/.claude/plugins/installed_plugins.json` の `installPath` を参照してください
 (このリポジトリを直接 checkout している場合は `node plugins/google-drive/scripts/auth.js login` で実行できます)。
 
-最初に client secret の対話入力を求められます(値は社内の秘密情報共有先から取得。入力は表示されません)。
+最初に client secret の対話入力を求められます。
+
+> **client secret の保存先（Keeper）**
+>
+> `00全社員共有` → `認証情報` → `drive-api` → `client secret`
+
+上記の値を入力してください。入力内容は表示されません。
 続いて表示された URL をブラウザで開いて許可してください。
 token record は macOS Keychain または Windows Credential Manager に保存されます。
 Windows native と WSL では同じ Windows Credential Manager target `scoped-connectors/google-drive/default` を使います。
@@ -79,11 +85,13 @@ token 保存前に `about.get` で取得したアカウントのメールドメ�
 これは token 保存前のポリシー確認であり、Google Workspace の共有境界や管理者ポリシーそのものを保証するものではありません。
 Google の許可画面で拒否される場合は、管理者に確認してください。
 
-## 4. コマンド実行許可の設定
+## 任意: コマンド実行許可の設定
 
 このプラグインは token の保存・読み取りに OS secure store を使います。
 Claude Code / Codex では OS secure store の保存・読み取りが sandbox 内で失敗します。
 このプラグインの skill（`auth.js` と `read.js`）は sandbox 外でスクリプトを実行する前提です。
+事前の許可設定は任意です。設定しなくても、実行時に sandbox 外実行を承認すれば利用できます。
+以降の設定は、継続利用時の承認プロンプトを省略したい場合だけ行ってください。
 初回実行時に sandbox 外実行の承認を求められたら許可してください。
 
 ### Claude Code の場合
