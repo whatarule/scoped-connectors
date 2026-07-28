@@ -32,6 +32,22 @@ test("read.js wrapper: read/cli と同じ API を export する", () => {
   assert.equal(legacyRead.readDriveFile, readDriveFile);
 });
 
+test("google-drive-read skill: バイナリ capability 不在・失敗時の未確認契約を維持する", () => {
+  const skillPath = path.resolve(__dirname, "../../skills/google-drive-read/SKILL.md");
+  const skill = fs.readFileSync(skillPath, "utf8");
+
+  assert.match(skill, /その形式を扱える tool \/ skill だけを使う/);
+  assert.match(skill, /画像対応の `Read` \/ image tool/);
+  assert.match(skill, /document、spreadsheet、presentation を扱う tool \/ skill/);
+  assert.match(skill, /内容は確認していません/);
+  assert.match(skill, /形式: <MIME type>/);
+  assert.match(skill, /保存先: <absolute path>/);
+  assert.match(skill, /dependency の install/);
+  assert.match(skill, /parser \/ renderer \/ converter script や virtual environment の作成/);
+  assert.match(skill, /暗号化、破損、未対応機能、page \/ size limit 等で失敗/);
+  assert.match(skill, /ファイル名や metadata だけから内容を推測しない/);
+});
+
 // --- extractFileId ---
 
 test("extractFileId: 素の fileId はそのまま返す", () => {
@@ -110,11 +126,25 @@ test("resolveReadPlan: 未対応の Google アプリ形式は throw", () => {
 test("resolveReadPlan: テキスト系 mime は stdout", () => {
   assert.deepEqual(resolveReadPlan("text/plain", null), { kind: "media", toStdout: true });
   assert.deepEqual(resolveReadPlan("application/json", null), { kind: "media", toStdout: true });
+  assert.deepEqual(resolveReadPlan("application/xml", null), { kind: "media", toStdout: true });
 });
 
-test("resolveReadPlan: バイナリはファイル保存", () => {
+test("resolveReadPlan: PDF・画像・Office・archive はファイル保存", () => {
   assert.deepEqual(resolveReadPlan("application/pdf", null), { kind: "media", toStdout: false });
   assert.deepEqual(resolveReadPlan("image/png", null), { kind: "media", toStdout: false });
+  assert.deepEqual(
+    resolveReadPlan("application/vnd.openxmlformats-officedocument.wordprocessingml.document", null),
+    { kind: "media", toStdout: false }
+  );
+  assert.deepEqual(
+    resolveReadPlan("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", null),
+    { kind: "media", toStdout: false }
+  );
+  assert.deepEqual(
+    resolveReadPlan("application/vnd.openxmlformats-officedocument.presentationml.presentation", null),
+    { kind: "media", toStdout: false }
+  );
+  assert.deepEqual(resolveReadPlan("application/zip", null), { kind: "media", toStdout: false });
 });
 
 test("resolveReadPlan: 通常ファイルへの --format は throw", () => {
@@ -160,8 +190,9 @@ test("writeReadResult: ファイル保存時は保存先メッセージを出す
   assert.equal(result.kind, "file");
   assert.equal(result.savedPath, path.join(outDir, "レポート_本体.pdf"));
   assert.equal(fs.readFileSync(result.savedPath, "utf8"), "pdf-bytes");
-  assert.match(output, /保存しました:/);
-  assert.match(output, /Read ツール/);
+  assert.equal(output, `保存しました: ${result.savedPath}\n`);
+  assert.doesNotMatch(output, /Read ツール/);
+  assert.doesNotMatch(output, /内容を確認/);
 });
 
 test("writeReadResult: 同名ファイルがある場合だけ fileId suffix を付ける", (t) => {
@@ -185,6 +216,28 @@ test("writeReadResult: 同名ファイルがある場合だけ fileId suffix を
   assert.equal(result.savedPath, path.join(outDir, "レポート_本体-FILE123.pdf"));
   assert.equal(fs.readFileSync(existingPath, "utf8"), "existing");
   assert.equal(fs.readFileSync(result.savedPath, "utf8"), "new-pdf-bytes");
+});
+
+test("writeReadResult: 相対 --out でも絶対保存パスを返す", (t) => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "drive-read-presenter-test-"));
+  t.after(() => {
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  });
+  const relativeOutDir = path.relative(process.cwd(), path.join(rootDir, "relative-output"));
+  let output = "";
+
+  const result = writeReadResult({
+    buffer: Buffer.from("pdf-bytes"),
+    plan: { toStdout: false },
+    outDir: relativeOutDir,
+    fileId: "FILE123",
+    fileName: "レポート.pdf",
+    stdout: { write: (chunk) => { output += chunk; } },
+  });
+
+  assert.equal(result.savedPath, path.join(rootDir, "relative-output", "レポート.pdf"));
+  assert.equal(path.isAbsolute(result.savedPath), true);
+  assert.equal(output, `保存しました: ${result.savedPath}\n`);
 });
 
 // --- readDriveFile ---
@@ -258,6 +311,36 @@ test("readDriveFile: Sheets export は先頭シートのみ warning を返す", 
 
   assert.equal(result.plan.exportMime, "text/csv");
   assert.deepEqual(result.warnings, ["注: Sheets の export は先頭シートのみです。"]);
+});
+
+test("readDriveFile: Office バイナリは MIME type を保持して media download する", async () => {
+  const mimeType =
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const result = await readDriveFile({
+    target: "DOCX123",
+    format: null,
+    force: false,
+  }, {
+    loadAllowlist: () => ({ allowedFolderIds: ["FOLDER1"] }),
+    verifyFileInAllowlist: async () => ({ allowed: true, reason: "" }),
+    fetchDriveApi: async () => ({
+      data: {
+        id: "DOCX123",
+        name: "仕様書.docx",
+        mimeType,
+        size: "10",
+      },
+    }),
+    fetchDriveApiRaw: async (apiPath, params) => {
+      assert.equal(apiPath, "files/DOCX123");
+      assert.deepEqual(params, { alt: "media", supportsAllDrives: true });
+      return { buffer: Buffer.from("docx-bytes") };
+    },
+  });
+
+  assert.equal(result.meta.mimeType, mimeType);
+  assert.deepEqual(result.plan, { kind: "media", toStdout: false });
+  assert.equal(result.buffer.toString("utf8"), "docx-bytes");
 });
 
 test("readDriveFile: media がサイズ上限を超えたら --force なしでは拒否する", async () => {

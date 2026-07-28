@@ -19,11 +19,12 @@ function appendFileIdSuffix(fileName, fileId) {
 }
 
 function saveToFile(outDir, fileId, fileName, buffer) {
-  fs.mkdirSync(outDir, { recursive: true });
+  const absoluteOutDir = path.resolve(outDir);
+  fs.mkdirSync(absoluteOutDir, { recursive: true });
   const sanitizedName = sanitizeFileName(fileName);
-  const defaultPath = path.join(outDir, sanitizedName);
+  const defaultPath = path.join(absoluteOutDir, sanitizedName);
   const filePath = fs.existsSync(defaultPath)
-    ? path.join(outDir, appendFileIdSuffix(sanitizedName, fileId))
+    ? path.join(absoluteOutDir, appendFileIdSuffix(sanitizedName, fileId))
     : defaultPath;
   fs.writeFileSync(filePath, buffer);
   return filePath;
@@ -37,7 +38,7 @@ function writeReadResult({ buffer, plan, outDir, fileId, fileName, stdout = proc
   }
 
   const savedPath = saveToFile(outDir, fileId, fileName, buffer);
-  stdout.write(`保存しました: ${savedPath}\nこのファイルは Read ツールで読んでください。\n`);
+  stdout.write(`保存しました: ${savedPath}\n`);
   return { kind: "file", savedPath };
 }
 
