@@ -5,7 +5,8 @@ Slack のメッセージを取得・検索し、public チャンネルへ投稿�
 
 **読み取りは public チャンネルのみ**です。private チャンネルと DM は scope を持たないため読み取れません。
 
-**投稿も public チャンネルのみ**です。DM・private チャンネルへの投稿はスクリプト側で拒否します。
+**投稿は参加済みのチャンネルのみ**です（public / private いずれも可）。
+**DM・グループ DM には投稿できません。**
 投稿は確認表示を挟む2段階で、`--confirm` を明示するまで実行されません。
 メッセージの編集・削除は一切行いません。
 
@@ -93,13 +94,21 @@ private チャンネルの `groups:*` と DM の `im:*` / `mpim:*` は付与し�
 
 ### 投稿スコープについて
 
-`chat:write` は public / private を区別しないため、**投稿先が public チャンネルであることは
-スクリプト側で検証します**（`scripts/policy/slack-post.js`）。
+投稿先は**参加済みのチャンネル**に限ります。public / private は問いません。
+private を除外しないのは、除外しても守れるものが無いためです——private への投稿は
+データを外に出さないので、public 限定にすると「秘匿情報を扱う話題を閉じた場所へ書く」
+という選択肢を塞ぐだけになります。
 
-- チャンネル名指定: キャッシュ（`conversations.list` を `types=public_channel` で取得したもの）に
-  載っていることが public の証明になる
-- チャンネル ID 直指定: private チャンネルの ID も `C` で始まり先頭文字では判別できないため、
-  `conversations.info` の `is_private` / `is_im` / `is_mpim` で確認する
+拒否するのは **DM・グループ DM** です。会話の相手が居る私的な領域なので、
+チャンネルへの投稿とは性質が異なるものとして対象外にしています。
+
+`chat:write` は投稿先の種別を区別しないため、判定は
+スクリプト側で行います（`scripts/policy/slack-post.js`）。
+
+- チャンネル名指定: public チャンネルのキャッシュから解決する
+  （private チャンネルは読み取り scope が無く一覧に載らないため、ID で指定する）
+- チャンネル ID 直指定: `conversations.info` の `is_im` / `is_mpim` で DM を拒否し、
+  `is_member` で参加済みであることを確認する
 - 情報を取得できない場合は投稿しない（fail closed）
 
 `chat:write.public` は付与しません。未参加のチャンネルへ投稿できてしまうためです。

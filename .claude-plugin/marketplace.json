@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "slack",
-      "description": "Slack からメッセージを取得し、public チャンネルへ投稿する Claude Code プラグイン",
+      "description": "Slack からメッセージを取得し、参加済みチャンネルへ投稿する Claude Code プラグイン",
       "source": "./plugins/slack"
     },
     {

@@ -2,13 +2,14 @@ const { describe, it } = require("node:test");
 const assert = require("node:assert/strict");
 const {
   denyReasonFromIdPrefix,
-  isPublicChannelInfo,
-  verifyPublicChannel,
+  channelDenyReason,
+  verifyPostableChannel,
   detectBroadcastMentions,
 } = require("../policy/slack-post");
 
-const PUBLIC_INFO = { id: "C123", is_private: false, is_im: false, is_mpim: false };
-const PRIVATE_INFO = { id: "C999", is_private: true, is_im: false, is_mpim: false };
+const PUBLIC_INFO = { id: "C123", is_private: false, is_member: true };
+const PRIVATE_INFO = { id: "C999", is_private: true, is_member: true };
+const NOT_JOINED_INFO = { id: "C888", is_private: false, is_member: false };
 
 function options({ cache = {}, info = PUBLIC_INFO, onInfo } = {}) {
   return {
@@ -26,12 +27,12 @@ describe("denyReasonFromIdPrefix", () => {
     assert.match(denyReasonFromIdPrefix("D123ABC"), /DM/);
   });
 
-  it("G 始まりの ID を private / group DM として拒否する", () => {
-    assert.match(denyReasonFromIdPrefix("G123ABC"), /private/);
-  });
-
   it("C 始まりの ID は先頭文字だけでは拒否しない", () => {
     assert.equal(denyReasonFromIdPrefix("C123ABC"), "");
+  });
+
+  it("G 始まりの ID も先頭文字だけでは拒否しない（private channel の可能性がある）", () => {
+    assert.equal(denyReasonFromIdPrefix("G123ABC"), "");
   });
 
   it("形式が不正な ID を拒否する", () => {
@@ -39,49 +40,53 @@ describe("denyReasonFromIdPrefix", () => {
   });
 });
 
-describe("isPublicChannelInfo", () => {
-  it("3つのフラグがいずれも false なら public とみなす", () => {
-    assert.equal(isPublicChannelInfo(PUBLIC_INFO), true);
+describe("channelDenyReason", () => {
+  it("参加済みの public チャンネルを許可する", () => {
+    assert.equal(channelDenyReason(PUBLIC_INFO), "");
   });
 
-  it("is_private が true なら public とみなさない", () => {
-    assert.equal(isPublicChannelInfo(PRIVATE_INFO), false);
+  it("参加済みの private チャンネルを許可する", () => {
+    assert.equal(channelDenyReason(PRIVATE_INFO), "");
   });
 
-  it("is_im が true なら public とみなさない", () => {
-    assert.equal(isPublicChannelInfo({ is_im: true }), false);
+  it("DM を拒否する", () => {
+    assert.match(channelDenyReason({ is_im: true }), /DM/);
   });
 
-  it("is_mpim が true なら public とみなさない", () => {
-    assert.equal(isPublicChannelInfo({ is_mpim: true }), false);
+  it("グループ DM を拒否する", () => {
+    assert.match(channelDenyReason({ is_mpim: true }), /DM/);
   });
 
-  it("channel が無い場合は public とみなさない", () => {
-    assert.equal(isPublicChannelInfo(null), false);
+  it("参加していないチャンネルを拒否する", () => {
+    assert.match(channelDenyReason(NOT_JOINED_INFO), /参加していない/);
+  });
+
+  it("channel が無い場合は拒否する", () => {
+    assert.match(channelDenyReason(null), /取得できません/);
   });
 });
 
-describe("verifyPublicChannel（名前指定）", () => {
-  it("キャッシュにある名前を public として許可する", async () => {
-    const result = await verifyPublicChannel("general", options({ cache: { general: "C123" } }));
+describe("verifyPostableChannel（名前指定）", () => {
+  it("キャッシュにある名前を許可する", async () => {
+    const result = await verifyPostableChannel("general", options({ cache: { general: "C123" } }));
     assert.equal(result.allowed, true);
     assert.equal(result.channelId, "C123");
   });
 
   it("先頭の # を無視して解決する", async () => {
-    const result = await verifyPublicChannel("#general", options({ cache: { general: "C123" } }));
+    const result = await verifyPostableChannel("#general", options({ cache: { general: "C123" } }));
     assert.equal(result.allowed, true);
   });
 
-  it("キャッシュに無い名前は拒否する", async () => {
-    const result = await verifyPublicChannel("secret-room", options({ cache: {} }));
+  it("キャッシュに無い名前は拒否し、ID 指定を案内する", async () => {
+    const result = await verifyPostableChannel("secret-room", options({ cache: {} }));
     assert.equal(result.allowed, false);
-    assert.match(result.reason, /キャッシュに見つかりません/);
+    assert.match(result.reason, /チャンネル ID で指定/);
   });
 
   it("名前指定では conversations.info を呼ばない（キャッシュが public を保証するため）", async () => {
     let called = false;
-    await verifyPublicChannel(
+    await verifyPostableChannel(
       "general",
       options({ cache: { general: "C123" }, onInfo: () => (called = true) })
     );
@@ -89,42 +94,50 @@ describe("verifyPublicChannel（名前指定）", () => {
   });
 
   it("チャンネル未指定を拒否する", async () => {
-    const result = await verifyPublicChannel("", options());
+    const result = await verifyPostableChannel("", options());
     assert.equal(result.allowed, false);
   });
 });
 
-describe("verifyPublicChannel（ID 直指定）", () => {
-  it("public チャンネルの ID を許可する", async () => {
-    const result = await verifyPublicChannel("C123", options({ info: PUBLIC_INFO }));
+describe("verifyPostableChannel（ID 直指定）", () => {
+  it("参加済みの public チャンネルの ID を許可する", async () => {
+    const result = await verifyPostableChannel("C123", options({ info: PUBLIC_INFO }));
     assert.equal(result.allowed, true);
     assert.equal(result.channelId, "C123");
   });
 
-  it("C 始まりでも private チャンネルなら拒否する", async () => {
-    const result = await verifyPublicChannel("C999", options({ info: PRIVATE_INFO }));
-    assert.equal(result.allowed, false);
-    assert.match(result.reason, /public チャンネルではない/);
+  it("参加済みの private チャンネルの ID を許可する", async () => {
+    const result = await verifyPostableChannel("C999", options({ info: PRIVATE_INFO }));
+    assert.equal(result.allowed, true);
   });
 
-  it("C 始まりの ID では必ず conversations.info で確認する", async () => {
+  it("参加していないチャンネルを拒否する", async () => {
+    const result = await verifyPostableChannel("C888", options({ info: NOT_JOINED_INFO }));
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /参加していない/);
+  });
+
+  it("ID 直指定では必ず conversations.info で確認する", async () => {
     let called = false;
-    await verifyPublicChannel("C123", options({ onInfo: () => (called = true) }));
+    await verifyPostableChannel("C123", options({ onInfo: () => (called = true) }));
     assert.equal(called, true);
   });
 
   it("DM の ID を API 呼び出し前に拒否する", async () => {
     let called = false;
-    const result = await verifyPublicChannel(
-      "D123",
-      options({ onInfo: () => (called = true) })
-    );
+    const result = await verifyPostableChannel("D123", options({ onInfo: () => (called = true) }));
     assert.equal(result.allowed, false);
     assert.equal(called, false);
   });
 
+  it("グループ DM は conversations.info の結果で拒否する", async () => {
+    const result = await verifyPostableChannel("G123", options({ info: { is_mpim: true } }));
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /DM/);
+  });
+
   it("conversations.info が失敗したら拒否する（fail closed）", async () => {
-    const result = await verifyPublicChannel(
+    const result = await verifyPostableChannel(
       "C123",
       options({ info: new Error("channel_not_found") })
     );

@@ -2,7 +2,7 @@
 
 const { fetchSlackApi, fetchSlackApiJson, resolveMentions } = require("./common");
 const { ensureChannelCache, ensureUsersCache, readCache } = require("./cache");
-const { verifyPublicChannel, detectBroadcastMentions } = require("./policy/slack-post");
+const { verifyPostableChannel, detectBroadcastMentions } = require("./policy/slack-post");
 
 const USAGE =
   "使い方: post.js <channel> <text> [--thread-ts <ts>] [--confirm]\n" +
@@ -78,7 +78,7 @@ function exitWithError(message) {
  * 投稿先を解決する。public でなければここで終了する。
  */
 async function resolveDestination(channel, getChannelInfo) {
-  const verdict = await verifyPublicChannel(channel, {
+  const verdict = await verifyPostableChannel(channel, {
     lookupCachedChannelId,
     getChannelInfo,
   });

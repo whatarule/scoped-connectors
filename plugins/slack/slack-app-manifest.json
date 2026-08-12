@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Claude Slack Reader",
-    "description": "Claude Code から Slack メッセージを読み取り、public チャンネルへ投稿するためのアプリ"
+    "description": "Claude Code から Slack メッセージを読み取り、参加済みチャンネルへ投稿するためのアプリ"
   },
   "oauth_config": {
     "redirect_urls": [
