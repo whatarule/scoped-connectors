@@ -48,13 +48,61 @@ function isPublicChannelInfo(channel) {
   return channel.is_private !== true && channel.is_im !== true && channel.is_mpim !== true;
 }
 
+const CHANNEL_ID_PATTERN = /^[CDG][A-Z0-9]+$/;
+
+function requireFunctions(options) {
+  for (const key of ["lookupCachedChannelId", "getChannelInfo"]) {
+    if (typeof (options && options[key]) !== "function") {
+      throw new Error(`${key} function is required.`);
+    }
+  }
+}
+
+/**
+ * 名前指定の検証。キャッシュは conversations.list を types=public_channel で
+ * 引いた結果なので、載っていること自体が public の証明になる。
+ */
+function verifyByName(name, lookupCachedChannelId) {
+  const cachedId = lookupCachedChannelId(name);
+  if (!cachedId) {
+    return deny(
+      `チャンネル "${name}" が public チャンネルのキャッシュに見つかりません。` +
+        "slack-channels でキャッシュを更新してください。"
+    );
+  }
+  return allow(cachedId);
+}
+
+/**
+ * conversations.info の結果から public 判定を下す。
+ * 取得できない場合は投稿しない（fail closed）。
+ */
+async function verifyByChannelInfo(channelId, getChannelInfo) {
+  let channel;
+  try {
+    channel = await getChannelInfo(channelId);
+  } catch (err) {
+    return deny(`チャンネル情報を取得できないため拒否しました（${err.message}）。`);
+  }
+  if (!isPublicChannelInfo(channel)) {
+    return deny("public チャンネルではないため投稿できません。");
+  }
+  return allow(channelId);
+}
+
+/**
+ * ID 直指定の検証。キャッシュによる public の保証を通らないため API に問い合わせる。
+ */
+async function verifyById(channelId, getChannelInfo) {
+  const prefixDenial = denyReasonFromIdPrefix(channelId);
+  if (prefixDenial) {
+    return deny(prefixDenial);
+  }
+  return verifyByChannelInfo(channelId, getChannelInfo);
+}
+
 /**
  * 投稿先が public チャンネルであることを検証する。
- *
- * 検証は2経路ある。
- * 1. チャンネル名から解決した場合: キャッシュは conversations.list を
- *    types=public_channel で引いた結果なので、載っていること自体が public の証明になる
- * 2. チャンネル ID を直接渡された場合: 上記の保証を通らないため conversations.info で確かめる
  *
  * @param {string} channelArg - ユーザーが指定したチャンネル名または ID
  * @param {object} options
@@ -65,51 +113,16 @@ function isPublicChannelInfo(channel) {
  * @returns {Promise<{allowed: boolean, reason: string, channelId?: string}>}
  */
 async function verifyPublicChannel(channelArg, options) {
-  const lookupCachedChannelId = options && options.lookupCachedChannelId;
-  const getChannelInfo = options && options.getChannelInfo;
-
-  if (typeof lookupCachedChannelId !== "function") {
-    throw new Error("lookupCachedChannelId function is required.");
-  }
-  if (typeof getChannelInfo !== "function") {
-    throw new Error("getChannelInfo function is required.");
-  }
+  requireFunctions(options);
 
   const name = String(channelArg || "").replace(/^#/, "");
   if (!name) {
     return deny("チャンネルが指定されていません。");
   }
-
-  // 経路1: 名前指定。キャッシュに載っていれば public 確定
-  if (!/^[CDG][A-Z0-9]+$/.test(name)) {
-    const cachedId = lookupCachedChannelId(name);
-    if (!cachedId) {
-      return deny(
-        `チャンネル "${name}" が public チャンネルのキャッシュに見つかりません。` +
-          "slack-channels でキャッシュを更新してください。"
-      );
-    }
-    return allow(cachedId);
+  if (CHANNEL_ID_PATTERN.test(name)) {
+    return verifyById(name, options.getChannelInfo);
   }
-
-  // 経路2: ID 直指定。先頭文字で確定できるものは先に落とす
-  const prefixDenial = denyReasonFromIdPrefix(name);
-  if (prefixDenial) {
-    return deny(prefixDenial);
-  }
-
-  // `C` は public / private の両方に使われるため API に問い合わせる
-  let channel;
-  try {
-    channel = await getChannelInfo(name);
-  } catch (err) {
-    return deny(`チャンネル情報を取得できないため拒否しました（${err.message}）。`);
-  }
-
-  if (!isPublicChannelInfo(channel)) {
-    return deny("public チャンネルではないため投稿できません。");
-  }
-  return allow(name);
+  return verifyByName(name, options.lookupCachedChannelId);
 }
 
 /**
