@@ -28,21 +28,17 @@ function parseArgs(argv) {
   return { channel, text: rest.join(" "), threadTs, confirm };
 }
 
-function buildDestinationLines({ channelArg, channelId, threadTs, memberCount }) {
+function buildDestinationLines({ channelArg, channelId, threadTs }) {
   const lines = [`投稿先: #${channelArg} (${channelId})`];
-  if (typeof memberCount === "number") {
-    lines.push(`参加人数: ${memberCount} 人`);
-  }
   if (threadTs) {
     lines.push(`スレッド返信: ${threadTs}`);
   }
   return lines;
 }
 
-function buildBroadcastWarning(broadcasts, memberCount) {
+function buildBroadcastWarning(broadcasts) {
   if (!broadcasts.length) return [];
-  const scope = typeof memberCount === "number" ? `（${memberCount} 人に通知されます）` : "";
-  return [`⚠️ ${broadcasts.join(" / ")} が飛びます${scope}`];
+  return [`⚠️ ${broadcasts.join(" / ")} が飛びます`];
 }
 
 /**
@@ -54,7 +50,7 @@ function buildPreview(params) {
   return [
     "--- 投稿内容の確認（まだ投稿していません） ---",
     ...buildDestinationLines(params),
-    ...buildBroadcastWarning(params.broadcasts, params.memberCount),
+    ...buildBroadcastWarning(params.broadcasts),
     "--- 本文 ---",
     resolveMentions(params.text),
     "---",
@@ -62,19 +58,9 @@ function buildPreview(params) {
   ].join("\n");
 }
 
-/**
- * conversations.info の結果を channel ID ごとに1回だけ取得する。
- * public 判定と参加人数の表示で同じ情報を使うため。
- */
-function createChannelInfoLoader() {
-  const cache = new Map();
-  return async function getChannelInfo(channelId) {
-    if (!cache.has(channelId)) {
-      const data = await fetchSlackApi("conversations.info", { channel: channelId });
-      cache.set(channelId, data.channel);
-    }
-    return cache.get(channelId);
-  };
+async function getChannelInfo(channelId) {
+  const data = await fetchSlackApi("conversations.info", { channel: channelId });
+  return data.channel;
 }
 
 function lookupCachedChannelId(name) {
@@ -102,19 +88,6 @@ async function resolveDestination(channel, getChannelInfo) {
   return verdict.channelId;
 }
 
-/**
- * 参加人数を取得する。確認表示を補強する情報でしかないため、
- * 取得できなくても投稿判断は妨げない。
- */
-async function fetchMemberCount(channelId, getChannelInfo) {
-  try {
-    const info = await getChannelInfo(channelId);
-    return info && typeof info.num_members === "number" ? info.num_members : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function showPreview(params) {
   const broadcasts = detectBroadcastMentions(params.text);
   console.log(buildPreview({ ...params, broadcasts }));
@@ -136,15 +109,13 @@ async function main() {
   await ensureChannelCache();
   await ensureUsersCache();
 
-  const getChannelInfo = createChannelInfoLoader();
   const channelId = await resolveDestination(channel, getChannelInfo);
-  const memberCount = await fetchMemberCount(channelId, getChannelInfo);
 
   if (confirm) {
     await postMessage({ channelId, text, threadTs });
     return;
   }
-  showPreview({ channelArg: channel, channelId, text, threadTs, memberCount });
+  showPreview({ channelArg: channel, channelId, text, threadTs });
 }
 
 if (require.main === module) {

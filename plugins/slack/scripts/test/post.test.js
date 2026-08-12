@@ -35,7 +35,6 @@ describe("buildPreview", () => {
     channelId: "C123",
     text: "こんにちは",
     threadTs: "",
-    memberCount: 42,
     broadcasts: [],
   };
 
@@ -43,26 +42,20 @@ describe("buildPreview", () => {
     assert.match(buildPreview(base), /まだ投稿していません/);
   });
 
-  it("投稿先と参加人数を表示する", () => {
-    const preview = buildPreview(base);
-    assert.match(preview, /#general \(C123\)/);
-    assert.match(preview, /42 人/);
+  it("投稿先を表示する", () => {
+    assert.match(buildPreview(base), /#general \(C123\)/);
   });
 
-  it("ブロードキャストがあれば人数付きで警告する", () => {
-    const preview = buildPreview({ ...base, broadcasts: ["@channel"] });
-    assert.match(preview, /⚠️ @channel が飛びます/);
-    assert.match(preview, /42 人に通知されます/);
+  it("本文を表示する", () => {
+    assert.match(buildPreview(base), /こんにちは/);
+  });
+
+  it("ブロードキャストがあれば警告する", () => {
+    assert.match(buildPreview({ ...base, broadcasts: ["@channel"] }), /⚠️ @channel が飛びます/);
   });
 
   it("ブロードキャストが無ければ警告を出さない", () => {
     assert.doesNotMatch(buildPreview(base), /飛びます/);
-  });
-
-  it("人数を取得できなくても確認表示は成立する", () => {
-    const preview = buildPreview({ ...base, memberCount: undefined });
-    assert.doesNotMatch(preview, /参加人数/);
-    assert.match(preview, /#general/);
   });
 
   it("スレッド返信なら返信先を表示する", () => {
