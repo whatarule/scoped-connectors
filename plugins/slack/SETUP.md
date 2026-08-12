@@ -134,3 +134,6 @@ guest user（`users.info` の `is_restricted` / `is_ultra_restricted` が true �
 
 既存 App に scope を追加した場合、管理側で承認済みになった後も、必ず「Install App」ページから再インストールしてください。
 再インストールしないと、Slack API の `provided` scope に新しい権限が反映されないことがあります。
+
+投稿機能（`chat:write`）の追加前からこのプラグインを使っている場合、保存済み token record には
+`chat:write` が含まれていません。`/slack-auth login` で再ログインすると新しい scope が反映されます。
