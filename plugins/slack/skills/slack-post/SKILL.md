@@ -56,7 +56,7 @@ node /a/b/scripts/post.js <channel> "<text>" [--thread-ts <ts>] --confirm
 timestamp は `slack-history` / `slack-thread` の出力に含まれます。
 
 ```bash
-node /a/b/scripts/post.js general "確認しました" --thread-ts 1234567890.123456
+node /a/b/scripts/post.js <channel> "確認しました" --thread-ts 1234567890.123456
 ```
 
 ## 出力の注意
