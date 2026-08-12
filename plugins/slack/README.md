@@ -1,9 +1,13 @@
 # Slack プラグイン
 
-Slack のメッセージを取得・検索するプラグインです。
+Slack のメッセージを取得・検索し、public チャンネルへ投稿するプラグインです。
 コマンドや自然言語（「generalの最近のメッセージ見せて」など）で、チャンネルの投稿内容やスレッドを確認できます。
 
-**読み取り専用**です。メッセージの送信・編集・削除は一切行いません。
+**読み取りは public チャンネルのみ**です。private チャンネルと DM は scope を持たないため読み取れません。
+
+**投稿も public チャンネルのみ**です。DM・private チャンネルへの投稿はスクリプト側で拒否します。
+投稿は確認表示を挟む2段階で、`--confirm` を明示するまで実行されません。
+メッセージの編集・削除は一切行いません。
 
 **[セットアップ手順](SETUP.md)**
 
@@ -25,6 +29,8 @@ Slack のメッセージを取得・検索するプラグインです。
 | `/slack-thread <URL>` | スレッドのメッセージを取得（URL指定、チャンネル不要） |
 | `/slack-search <keyword> [count]` | パブリックチャンネルの投稿を検索（デフォルト3件、最大100件） |
 | `/slack-search <keyword> [count] 先週` | 期間指定でパブリックチャンネルの投稿を検索 |
+| `/slack-post <channel> <text>` | public チャンネルへ投稿（確認表示のみ。投稿は承認後） |
+| `/slack-post <channel> <text> --thread-ts <ts>` | スレッドへ返信（確認表示のみ。投稿は承認後） |
 
 `timestamp` は Slack がメッセージを一意に識別するための値です（例: `1776320535.121069`）。
 メッセージ取得の出力に含まれるので、そこからコピーしてスレッド取得に使えます。
@@ -68,15 +74,33 @@ guest user（`is_restricted` / `is_ultra_restricted`）の token は常に保存
 
 共有 Slack App は Public Distribution を有効化せず、対象 workspace 用の App として管理します。
 
-共有 Slack App には以下の読み取り専用スコープが設定されています:
+共有 Slack App には以下のスコープが設定されています:
 
 | スコープ | 用途 |
 |---|---|
 | `channels:read` | パブリックチャンネルの一覧取得 |
 | `channels:history` | チャンネルのメッセージ履歴取得 |
+| `chat:write` | public チャンネルへのメッセージ投稿 |
 | `search:read.public` | Real-time Search API でのパブリックチャンネル検索 |
 | `users:read` | ユーザー名の表示 |
 | `usergroups:read` | ユーザーグループ名の表示 |
 
+読み取り系のスコープはいずれも public チャンネルに限定したものです。
+private チャンネルの `groups:*` と DM の `im:*` / `mpim:*` は付与しません。
+
 このプラグインの検索は `search:read.public` scope の Real-time Search API で実装しています。
 認可ユーザーが閲覧できるプライベートチャンネルの結果を返す可能性があるため、`search:read` は付与しません。
+
+### 投稿スコープについて
+
+`chat:write` は public / private を区別しないため、**投稿先が public チャンネルであることは
+スクリプト側で検証します**（`scripts/policy/slack-post.js`）。
+
+- チャンネル名指定: キャッシュ（`conversations.list` を `types=public_channel` で取得したもの）に
+  載っていることが public の証明になる
+- チャンネル ID 直指定: private チャンネルの ID も `C` で始まり先頭文字では判別できないため、
+  `conversations.info` の `is_private` / `is_im` / `is_mpim` で確認する
+- 情報を取得できない場合は投稿しない（fail closed）
+
+`chat:write.public` は付与しません。未参加のチャンネルへ投稿できてしまうためです。
+編集・削除（`chat:update` / `chat:delete`）も付与しません。
