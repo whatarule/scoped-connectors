@@ -8,7 +8,7 @@ const {
   DEFAULT_REDIRECT_URI,
   DEFAULT_ALLOWED_TEAM_IDS,
   DEFAULT_CONFIG_PATH,
-  READONLY_SCOPES,
+  REQUIRED_SCOPES,
   normalizeTeamIds,
   applyDefaults,
   parseArgs,
@@ -137,11 +137,11 @@ describe("scope validation", () => {
 
   it("必要な scope が揃っていれば不足なしにする", () => {
     assert.deepEqual(
-      getMissingRequiredScopes(extractGrantedScopes({ authed_user: { scope: READONLY_SCOPES.join(",") } })),
+      getMissingRequiredScopes(extractGrantedScopes({ authed_user: { scope: REQUIRED_SCOPES.join(",") } })),
       []
     );
     assert.doesNotThrow(() =>
-      validateGrantedScopes({ scope: READONLY_SCOPES.join(",") })
+      validateGrantedScopes({ scope: REQUIRED_SCOPES.join(",") })
     );
   });
 
@@ -154,7 +154,7 @@ describe("scope validation", () => {
 
     assert.deepEqual(
       getMissingRequiredScopes(extractGrantedScopes(tokenResponse)),
-      ["channels:history", "search:read.public", "usergroups:read"]
+      ["channels:history", "chat:write", "search:read.public", "usergroups:read"]
     );
     assert.throws(
       () => validateGrantedScopes(tokenResponse),
@@ -207,7 +207,7 @@ describe("buildAuthorizeUrl", () => {
     assert.equal(url.searchParams.get("client_id"), "123.456");
     assert.equal(url.searchParams.get("redirect_uri"), DEFAULT_REDIRECT_URI);
     assert.equal(url.searchParams.get("response_type"), "code");
-    assert.equal(url.searchParams.get("scope"), READONLY_SCOPES.join(","));
+    assert.equal(url.searchParams.get("scope"), REQUIRED_SCOPES.join(","));
     assert.equal(url.searchParams.get("code_challenge"), "challenge");
     assert.equal(url.searchParams.get("code_challenge_method"), "S256");
     assert.equal(url.searchParams.get("state"), "state");
@@ -297,7 +297,7 @@ describe("exchangeCodeForToken", () => {
               expires_in: 43200,
               token_type: "user",
               team: { id: "T123", name: "Example" },
-              authed_user: { id: "U123", scope: READONLY_SCOPES.join(",") },
+              authed_user: { id: "U123", scope: REQUIRED_SCOPES.join(",") },
             };
           },
         };

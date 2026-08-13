@@ -29,9 +29,10 @@ const DEFAULT_CONFIG_PATH = path.join(
   "slack",
   "config.json"
 );
-const READONLY_SCOPES = [
+const REQUIRED_SCOPES = [
   "channels:history",
   "channels:read",
+  "chat:write",
   "search:read.public",
   "users:read",
   "usergroups:read",
@@ -149,11 +150,11 @@ function extractGrantedScopes(tokenResponse = {}) {
   return new Set(rawScopes.map((scope) => String(scope).trim()).filter(Boolean));
 }
 
-function getMissingRequiredScopes(grantedScopes, requiredScopes = READONLY_SCOPES) {
+function getMissingRequiredScopes(grantedScopes, requiredScopes = REQUIRED_SCOPES) {
   return requiredScopes.filter((scope) => !grantedScopes.has(scope));
 }
 
-function validateGrantedScopes(tokenResponse, requiredScopes = READONLY_SCOPES) {
+function validateGrantedScopes(tokenResponse, requiredScopes = REQUIRED_SCOPES) {
   const grantedScopes = extractGrantedScopes(tokenResponse);
   const missingScopes = getMissingRequiredScopes(grantedScopes, requiredScopes);
   if (missingScopes.length === 0) return;
@@ -173,7 +174,7 @@ function buildAuthorizeUrl(options, pkce, state) {
   url.searchParams.set("client_id", options.clientId);
   url.searchParams.set("redirect_uri", options.redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", READONLY_SCOPES.join(","));
+  url.searchParams.set("scope", REQUIRED_SCOPES.join(","));
   url.searchParams.set("code_challenge", pkce.challenge);
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("state", state);
@@ -214,7 +215,7 @@ async function waitForAuthorization(options) {
 
   process.stdout.write(
     [
-      "次の URL をブラウザで開いて Slack の読み取り権限を許可してください:",
+      "次の URL をブラウザで開いて Slack の読み取り / 投稿権限を許可してください:",
       authUrl.toString(),
       "",
     ].join("\n")
@@ -347,7 +348,7 @@ function buildTokenRecord(options, data, now = Date.now(), verification = {}) {
   const scope =
     data.scope ||
     (data.authed_user && data.authed_user.scope) ||
-    READONLY_SCOPES.join(",");
+    REQUIRED_SCOPES.join(",");
   const expiresAt = data.expires_in ? now + data.expires_in * 1000 : 0;
 
   return {
@@ -423,7 +424,7 @@ module.exports = {
   DEFAULT_REDIRECT_URI,
   DEFAULT_ALLOWED_TEAM_IDS,
   DEFAULT_CONFIG_PATH,
-  READONLY_SCOPES,
+  REQUIRED_SCOPES,
   USAGE,
   loadConfigFile,
   applyDefaults,

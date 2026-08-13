@@ -24,7 +24,7 @@ node plugins/slack/scripts/slack-auth.js
 node plugins/slack/scripts/slack-auth.js login
 ```
 
-表示された URL をブラウザで開き、Slack の読み取り権限を許可してください。
+表示された URL をブラウザで開き、Slack の読み取り / 投稿権限を許可してください。
 
 認証方式と token 保存の仕様は [README](README.md#参考-認証と-token-保存) を参照してください。
 
