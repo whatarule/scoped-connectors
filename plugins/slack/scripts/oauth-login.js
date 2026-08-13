@@ -19,7 +19,7 @@ const { postFormForJson } = require("./_shared/oauth/http");
 const AUTH_URI = "https://slack.com/oauth/v2_user/authorize";
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";
 const SLACK_API_URI = "https://slack.com/api/";
-const DEFAULT_CLIENT_ID = "6381386946.11807045760195";
+const DEFAULT_CLIENT_ID = "6381386946.11798351065735";
 const DEFAULT_REDIRECT_URI = "http://localhost:53682/slack/oauth/callback";
 const DEFAULT_ALLOWED_TEAM_IDS = ["T06B7BCTU"];
 const DEFAULT_CONFIG_PATH = path.join(
@@ -59,9 +59,9 @@ function loadConfigFile(configPath) {
 function applyDefaults(parsed, config = {}, env = process.env) {
   const allowedTeamIds = normalizeTeamIds(
     parsed.allowedTeamIds ||
-      env.SLACK_ALLOWED_TEAM_IDS ||
-      config.allowed_team_ids ||
-      DEFAULT_ALLOWED_TEAM_IDS
+    env.SLACK_ALLOWED_TEAM_IDS ||
+    config.allowed_team_ids ||
+    DEFAULT_ALLOWED_TEAM_IDS
   );
 
   return {
