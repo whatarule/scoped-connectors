@@ -8,9 +8,14 @@
  * private への投稿はデータを外に出さないので、public 限定にすると
  * 「秘匿情報を扱う話題を閉じた場所へ書く」という逃げ道を塞ぐだけになる。
  *
- * 拒否するのは DM（1対1・グループ）のみ。DM は会話の相手が居る私的な領域で、
- * チャンネルへの投稿とは性質が異なるため対象外とする。
+ * 拒否するのは DM（1対1・グループ）と、参加していない・アーカイブ済みのチャンネル。
+ * DM は会話の相手が居る私的な領域で、チャンネルへの投稿とは性質が異なるため対象外とする。
+ *
+ * 判定は名前指定・ID 指定のどちらでも conversations.info を通す。
+ * 取得できない場合は投稿しない（fail closed）。
  */
+
+const { createHash } = require("crypto");
 
 const CHANNEL_ID_PATTERN = /^[CDG][A-Z0-9]+$/;
 
@@ -18,8 +23,8 @@ function deny(reason) {
   return { allowed: false, reason };
 }
 
-function allow(channelId) {
-  return { allowed: true, reason: "", channelId };
+function allow(channelId, channelName) {
+  return { allowed: true, reason: "", channelId, channelName: channelName || "" };
 }
 
 function requireFunctions(options) {
@@ -46,7 +51,7 @@ function denyReasonFromIdPrefix(channelId) {
 
 /**
  * conversations.info のレスポンスから、投稿してよいチャンネルか判定する。
- * DM・グループ DM を拒否し、参加していないチャンネルも拒否する。
+ * DM・グループ DM を拒否し、参加していないチャンネル・アーカイブ済みも拒否する。
  */
 function channelDenyReason(channel) {
   if (!channel) {
@@ -58,14 +63,22 @@ function channelDenyReason(channel) {
   if (channel.is_member === false) {
     return "参加していないチャンネルには投稿できません。";
   }
+  if (channel.is_archived === true) {
+    return "アーカイブ済みのチャンネルには投稿できません。";
+  }
   return "";
 }
 
 /**
- * 名前指定の検証。キャッシュは conversations.list を types=public_channel で
- * 引いた結果なので、載っていれば public チャンネルであることが確定する。
+ * 名前指定の検証。キャッシュは名前から ID を引くためだけに使う。
+ *
+ * キャッシュは conversations.list を types=public_channel で引いた結果なので、
+ * 載っていることで確定するのは「public チャンネルである」ことだけで、
+ * **参加しているかどうかは分からない**（未参加の public チャンネルも一覧に載る）。
+ * 参加済みという条件は conversations.info でしか確かめられないため、
+ * 名前指定でも ID 指定と同じ検証を通す。
  */
-function verifyByName(name, lookupCachedChannelId) {
+async function verifyByName(name, lookupCachedChannelId, getChannelInfo) {
   const cachedId = lookupCachedChannelId(name);
   if (!cachedId) {
     return deny(
@@ -73,7 +86,7 @@ function verifyByName(name, lookupCachedChannelId) {
         "private チャンネルへ投稿する場合はチャンネル ID で指定してください。"
     );
   }
-  return allow(cachedId);
+  return verifyByChannelInfo(cachedId, getChannelInfo);
 }
 
 /**
@@ -88,7 +101,7 @@ async function verifyByChannelInfo(channelId, getChannelInfo) {
     return deny(`チャンネル情報を取得できないため拒否しました（${err.message}）。`);
   }
   const reason = channelDenyReason(channel);
-  return reason ? deny(reason) : allow(channelId);
+  return reason ? deny(reason) : allow(channelId, channel.name);
 }
 
 /**
@@ -111,7 +124,7 @@ async function verifyById(channelId, getChannelInfo) {
  *   チャンネル名から ID を引く。キャッシュにない場合は null
  * @param {(channelId: string) => Promise<object>} options.getChannelInfo
  *   conversations.info の channel オブジェクトを返す
- * @returns {Promise<{allowed: boolean, reason: string, channelId?: string}>}
+ * @returns {Promise<{allowed: boolean, reason: string, channelId?: string, channelName?: string}>}
  */
 async function verifyPostableChannel(channelArg, options) {
   requireFunctions(options);
@@ -123,7 +136,7 @@ async function verifyPostableChannel(channelArg, options) {
   if (CHANNEL_ID_PATTERN.test(name)) {
     return verifyById(name, options.getChannelInfo);
   }
-  return verifyByName(name, options.lookupCachedChannelId);
+  return verifyByName(name, options.lookupCachedChannelId, options.getChannelInfo);
 }
 
 /**
@@ -141,10 +154,27 @@ function detectBroadcastMentions(text) {
   return found;
 }
 
+/**
+ * 確認した内容と、実際に投稿する内容を結びつけるためのトークンを計算する。
+ *
+ * 2段階の確認は「人がプレビューを読んで承認する」ことを前提にしているが、
+ * プレビューと `--confirm` は別々の実行なので、そのままでは
+ * **A を見せて B を投稿する**ことができてしまい、承認が実質的に効かない。
+ * 投稿先・本文・スレッドから決まるトークンを一致条件にすることで、
+ * 承認された内容そのものだけが投稿できるようにする。
+ *
+ * 秘匿目的ではなく取り違えの検出が目的なので、短く読める長さに切り詰める。
+ */
+function buildConfirmToken({ channelId, text, threadTs }) {
+  const payload = JSON.stringify([channelId || "", text || "", threadTs || ""]);
+  return createHash("sha256").update(payload, "utf8").digest("hex").slice(0, 8);
+}
+
 module.exports = {
   CHANNEL_ID_PATTERN,
   denyReasonFromIdPrefix,
   channelDenyReason,
   verifyPostableChannel,
   detectBroadcastMentions,
+  buildConfirmToken,
 };

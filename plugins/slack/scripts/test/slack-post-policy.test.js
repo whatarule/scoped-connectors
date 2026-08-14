@@ -5,11 +5,13 @@ const {
   channelDenyReason,
   verifyPostableChannel,
   detectBroadcastMentions,
+  buildConfirmToken,
 } = require("../policy/slack-post");
 
-const PUBLIC_INFO = { id: "C123", is_private: false, is_member: true };
-const PRIVATE_INFO = { id: "C999", is_private: true, is_member: true };
-const NOT_JOINED_INFO = { id: "C888", is_private: false, is_member: false };
+const PUBLIC_INFO = { id: "C123", name: "general", is_private: false, is_member: true };
+const PRIVATE_INFO = { id: "C999", name: "secret-room", is_private: true, is_member: true };
+const NOT_JOINED_INFO = { id: "C888", name: "prd-design", is_private: false, is_member: false };
+const ARCHIVED_INFO = { id: "C777", name: "infra", is_member: true, is_archived: true };
 
 function options({ cache = {}, info = PUBLIC_INFO, onInfo } = {}) {
   return {
@@ -61,13 +63,17 @@ describe("channelDenyReason", () => {
     assert.match(channelDenyReason(NOT_JOINED_INFO), /参加していない/);
   });
 
+  it("アーカイブ済みのチャンネルを拒否する", () => {
+    assert.match(channelDenyReason(ARCHIVED_INFO), /アーカイブ/);
+  });
+
   it("channel が無い場合は拒否する", () => {
     assert.match(channelDenyReason(null), /取得できません/);
   });
 });
 
 describe("verifyPostableChannel（名前指定）", () => {
-  it("キャッシュにある名前を許可する", async () => {
+  it("キャッシュにある参加済みの名前を許可する", async () => {
     const result = await verifyPostableChannel("general", options({ cache: { general: "C123" } }));
     assert.equal(result.allowed, true);
     assert.equal(result.channelId, "C123");
@@ -84,13 +90,31 @@ describe("verifyPostableChannel（名前指定）", () => {
     assert.match(result.reason, /チャンネル ID で指定/);
   });
 
-  it("名前指定では conversations.info を呼ばない（キャッシュが public を保証するため）", async () => {
-    let called = false;
+  it("名前指定でも conversations.info で参加済みを確認する", async () => {
+    let called = "";
     await verifyPostableChannel(
       "general",
-      options({ cache: { general: "C123" }, onInfo: () => (called = true) })
+      options({ cache: { general: "C123" }, onInfo: (id) => (called = id) })
     );
-    assert.equal(called, false);
+    assert.equal(called, "C123");
+  });
+
+  it("キャッシュに載っていても未参加なら拒否する（一覧は未参加の public も含むため）", async () => {
+    const result = await verifyPostableChannel(
+      "prd-design",
+      options({ cache: { "prd-design": "C888" }, info: NOT_JOINED_INFO })
+    );
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /参加していない/);
+  });
+
+  it("キャッシュに載っていてもアーカイブ済みなら拒否する", async () => {
+    const result = await verifyPostableChannel(
+      "infra",
+      options({ cache: { infra: "C777" }, info: ARCHIVED_INFO })
+    );
+    assert.equal(result.allowed, false);
+    assert.match(result.reason, /アーカイブ/);
   });
 
   it("チャンネル未指定を拒否する", async () => {
@@ -115,6 +139,11 @@ describe("verifyPostableChannel（ID 直指定）", () => {
     const result = await verifyPostableChannel("C888", options({ info: NOT_JOINED_INFO }));
     assert.equal(result.allowed, false);
     assert.match(result.reason, /参加していない/);
+  });
+
+  it("ID 指定でもチャンネル名を返す（確認表示で人が読むため）", async () => {
+    const result = await verifyPostableChannel("C999", options({ info: PRIVATE_INFO }));
+    assert.equal(result.channelName, "secret-room");
   });
 
   it("ID 直指定では必ず conversations.info で確認する", async () => {
@@ -165,5 +194,32 @@ describe("detectBroadcastMentions", () => {
 
   it("単語の一部を誤検出しない", () => {
     assert.deepEqual(detectBroadcastMentions("@channels や @herecomes は対象外"), []);
+  });
+});
+
+describe("buildConfirmToken", () => {
+  const base = { channelId: "C123", text: "こんにちは", threadTs: "" };
+
+  it("同じ内容なら同じ token になる", () => {
+    assert.equal(buildConfirmToken(base), buildConfirmToken({ ...base }));
+  });
+
+  it("本文が変われば token が変わる", () => {
+    assert.notEqual(buildConfirmToken(base), buildConfirmToken({ ...base, text: "さようなら" }));
+  });
+
+  it("投稿先が変われば token が変わる", () => {
+    assert.notEqual(buildConfirmToken(base), buildConfirmToken({ ...base, channelId: "C999" }));
+  });
+
+  it("スレッド指定が変われば token が変わる", () => {
+    assert.notEqual(buildConfirmToken(base), buildConfirmToken({ ...base, threadTs: "1.2" }));
+  });
+
+  it("区切りの取り違えで衝突しない", () => {
+    assert.notEqual(
+      buildConfirmToken({ channelId: "C1", text: "23", threadTs: "" }),
+      buildConfirmToken({ channelId: "C12", text: "3", threadTs: "" })
+    );
   });
 });

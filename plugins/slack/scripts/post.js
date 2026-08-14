@@ -2,34 +2,55 @@
 
 const { fetchSlackApi, fetchSlackApiJson, resolveMentions } = require("./common");
 const { ensureChannelCache, ensureUsersCache, readCache } = require("./cache");
-const { verifyPostableChannel, detectBroadcastMentions } = require("./policy/slack-post");
+const {
+  verifyPostableChannel,
+  detectBroadcastMentions,
+  buildConfirmToken,
+} = require("./policy/slack-post");
 
 const USAGE =
-  "使い方: post.js <channel> <text> [--thread-ts <ts>] [--confirm]\n" +
-  "  --confirm を付けるまで投稿は行わず、投稿内容の確認だけを表示します。\n";
+  "使い方: post.js <channel> <text> [--thread-ts <ts>] [--confirm <token>]\n" +
+  "  --confirm を付けるまで投稿は行わず、投稿内容の確認だけを表示します。\n" +
+  "  <token> は確認表示に出るものをそのまま渡します。\n";
+
+/**
+ * 値を伴うオプション。値が無いまま終端に来たら、本文へ混ぜずにエラーにする。
+ */
+const VALUE_OPTIONS = { "--thread-ts": "threadTs", "--confirm": "confirmToken" };
 
 function collectArgs(argv) {
-  const parsed = { threadTs: "", confirm: false, positional: [] };
+  const parsed = { threadTs: "", confirmToken: "", confirm: false, positional: [], error: "" };
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--thread-ts" && argv[i + 1]) {
-      parsed.threadTs = argv[++i];
-    } else if (argv[i] === "--confirm") {
-      parsed.confirm = true;
-    } else {
+    const key = VALUE_OPTIONS[argv[i]];
+    if (!key) {
       parsed.positional.push(argv[i]);
+      continue;
     }
+    const value = argv[i + 1];
+    if (value === undefined || VALUE_OPTIONS[value]) {
+      parsed.error = `${argv[i]} には値が必要です。\n`;
+      return parsed;
+    }
+    parsed[key] = value;
+    i++;
   }
+  parsed.confirm = parsed.confirmToken !== "";
   return parsed;
 }
 
 function parseArgs(argv) {
-  const { threadTs, confirm, positional } = collectArgs(argv);
+  const { threadTs, confirm, confirmToken, positional, error } = collectArgs(argv);
   const [channel = "", ...rest] = positional;
-  return { channel, text: rest.join(" "), threadTs, confirm };
+  return { channel, text: rest.join(" "), threadTs, confirm, confirmToken, error };
 }
 
-function buildDestinationLines({ channelArg, channelId, threadTs }) {
-  const lines = [`投稿先: #${channelArg} (${channelId})`];
+/**
+ * 承認する人が読む行なので、指定の形（名前 / ID）に関わらずチャンネル名を出す。
+ * private チャンネルは ID 指定しかできないため、名前は conversations.info から取る。
+ */
+function buildDestinationLines({ channelArg, channelId, channelName, threadTs }) {
+  const name = channelName || String(channelArg).replace(/^#/, "");
+  const lines = [`投稿先: #${name} (${channelId})`];
   if (threadTs) {
     lines.push(`スレッド返信: ${threadTs}`);
   }
@@ -54,7 +75,8 @@ function buildPreview(params) {
     "--- 本文 ---",
     resolveMentions(params.text),
     "---",
-    "この内容で投稿するには --confirm を付けて再実行してください。",
+    `この内容で投稿するには --confirm ${params.confirmToken} を付けて再実行してください。`,
+    "本文や投稿先を変えると token も変わります。",
   ].join("\n");
 }
 
@@ -75,7 +97,7 @@ function exitWithError(message) {
 }
 
 /**
- * 投稿先を解決する。public でなければここで終了する。
+ * 投稿先を解決する。投稿できないチャンネルならここで終了する。
  */
 async function resolveDestination(channel, getChannelInfo) {
   const verdict = await verifyPostableChannel(channel, {
@@ -85,12 +107,25 @@ async function resolveDestination(channel, getChannelInfo) {
   if (!verdict.allowed) {
     exitWithError(`投稿を中止しました: ${verdict.reason}\n`);
   }
-  return verdict.channelId;
+  return verdict;
 }
 
 function showPreview(params) {
   const broadcasts = detectBroadcastMentions(params.text);
   console.log(buildPreview({ ...params, broadcasts }));
+}
+
+/**
+ * 承認された内容と、これから投稿する内容が同じであることを確かめる。
+ * 食い違ったら投稿せず、現在の内容に対する token を出して確認をやり直させる。
+ */
+function requireMatchingToken({ expected, given }) {
+  if (given === expected) return;
+  exitWithError(
+    "投稿を中止しました: 確認した内容と一致しません。\n" +
+      "本文・投稿先・スレッドのいずれかが確認時から変わっています。\n" +
+      "--confirm を外して確認表示からやり直してください。\n"
+  );
 }
 
 async function postMessage({ channelId, text, threadTs }) {
@@ -101,7 +136,12 @@ async function postMessage({ channelId, text, threadTs }) {
 }
 
 async function main() {
-  const { channel, text, threadTs, confirm } = parseArgs(process.argv.slice(2));
+  const { channel, text, threadTs, confirm, confirmToken, error } = parseArgs(
+    process.argv.slice(2)
+  );
+  if (error) {
+    exitWithError(error + USAGE);
+  }
   if (!channel || !text) {
     exitWithError(USAGE);
   }
@@ -109,13 +149,22 @@ async function main() {
   await ensureChannelCache();
   await ensureUsersCache();
 
-  const channelId = await resolveDestination(channel, getChannelInfo);
+  const { channelId, channelName } = await resolveDestination(channel, getChannelInfo);
+  const expectedToken = buildConfirmToken({ channelId, text, threadTs });
 
   if (confirm) {
+    requireMatchingToken({ expected: expectedToken, given: confirmToken });
     await postMessage({ channelId, text, threadTs });
     return;
   }
-  showPreview({ channelArg: channel, channelId, text, threadTs });
+  showPreview({
+    channelArg: channel,
+    channelId,
+    channelName,
+    text,
+    threadTs,
+    confirmToken: expectedToken,
+  });
 }
 
 if (require.main === module) {

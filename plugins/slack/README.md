@@ -1,13 +1,14 @@
 # Slack プラグイン
 
-Slack のメッセージを取得・検索し、public チャンネルへ投稿するプラグインです。
+Slack のメッセージを取得・検索し、参加済みのチャンネルへ投稿するプラグインです。
 コマンドや自然言語（「generalの最近のメッセージ見せて」など）で、チャンネルの投稿内容やスレッドを確認できます。
 
 **読み取りは public チャンネルのみ**です。private チャンネルと DM は scope を持たないため読み取れません。
 
 **投稿は参加済みのチャンネルのみ**です（public / private いずれも可）。
 **DM・グループ DM には投稿できません。**
-投稿は確認表示を挟む2段階で、`--confirm` を明示するまで実行されません。
+投稿は確認表示を挟む2段階で、確認表示に出た token を `--confirm` に渡すまで実行されません。
+token は投稿先・本文から決まるため、**確認した内容と違うものは投稿できません。**
 メッセージの編集・削除は一切行いません。
 
 **[セットアップ手順](SETUP.md)**
@@ -30,7 +31,7 @@ Slack のメッセージを取得・検索し、public チャンネルへ投稿�
 | `/slack-thread <URL>` | スレッドのメッセージを取得（URL指定、チャンネル不要） |
 | `/slack-search <keyword> [count]` | パブリックチャンネルの投稿を検索（デフォルト3件、最大100件） |
 | `/slack-search <keyword> [count] 先週` | 期間指定でパブリックチャンネルの投稿を検索 |
-| `/slack-post <channel> <text>` | public チャンネルへ投稿（確認表示のみ。投稿は承認後） |
+| `/slack-post <channel> <text>` | 参加済みチャンネルへ投稿（確認表示のみ。投稿は承認後） |
 | `/slack-post <channel> <text> --thread-ts <ts>` | スレッドへ返信（確認表示のみ。投稿は承認後） |
 
 `timestamp` は Slack がメッセージを一意に識別するための値です（例: `1776320535.121069`）。
@@ -81,7 +82,7 @@ guest user（`is_restricted` / `is_ultra_restricted`）の token は常に保存
 |---|---|
 | `channels:read` | パブリックチャンネルの一覧取得 |
 | `channels:history` | チャンネルのメッセージ履歴取得 |
-| `chat:write` | public チャンネルへのメッセージ投稿 |
+| `chat:write` | 参加済みチャンネルへのメッセージ投稿 |
 | `search:read.public` | Real-time Search API でのパブリックチャンネル検索 |
 | `users:read` | ユーザー名の表示 |
 | `usergroups:read` | ユーザーグループ名の表示 |
@@ -105,11 +106,26 @@ private を除外しないのは、除外しても守れるものが無いため
 `chat:write` は投稿先の種別を区別しないため、判定は
 スクリプト側で行います（`scripts/policy/slack-post.js`）。
 
-- チャンネル名指定: public チャンネルのキャッシュから解決する
-  （private チャンネルは読み取り scope が無く一覧に載らないため、ID で指定する）
-- チャンネル ID 直指定: `conversations.info` の `is_im` / `is_mpim` で DM を拒否し、
-  `is_member` で参加済みであることを確認する
+- `D` 始まりの ID は DM と確定するので、API を呼ぶ前に拒否する
+- それ以外は名前指定・ID 指定のどちらでも `conversations.info` を引き、
+  `is_im` / `is_mpim` で DM を、`is_member` で未参加を、`is_archived` で
+  アーカイブ済みを拒否する
 - 情報を取得できない場合は投稿しない（fail closed）
+
+チャンネルのキャッシュは**名前から ID を引くためだけ**に使います。
+キャッシュは `conversations.list` を `types=public_channel` で引いた結果なので、
+載っていることで分かるのは「public チャンネルである」ことだけで、
+**参加しているかどうかは分かりません**（未参加の public チャンネルも一覧に載ります）。
+そのため名前指定でも `conversations.info` の確認を省きません。
 
 `chat:write.public` は付与しません。未参加のチャンネルへ投稿できてしまうためです。
 編集・削除（`chat:update` / `chat:delete`）も付与しません。
+
+### 確認した内容だけが投稿できる
+
+確認表示と `--confirm` は別々の実行なので、そのままでは
+「A を見せて B を投稿する」ことができてしまい、人の承認が実質的に効きません。
+
+そこで確認表示は、投稿先・本文・スレッドから決まる token を出します。
+`--confirm <token>` が現在の内容と一致しなければ投稿しません。
+承認後に本文や投稿先が変われば token も変わるため、確認をやり直すことになります。
