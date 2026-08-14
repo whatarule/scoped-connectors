@@ -1,7 +1,7 @@
 {
   "display_information": {
-    "name": "Claude Slack Reader",
-    "description": "Claude Code から Slack メッセージを読み取るためのアプリ（読み取り専用）"
+    "name": "Scoped Connector",
+    "description": "AIエージェントから、範囲を限定してメッセージの読み取りと投稿を行うためのアプリ"
   },
   "oauth_config": {
     "redirect_urls": [
@@ -11,9 +11,13 @@
       "user": [
         "channels:history",
         "channels:read",
+        "chat:write",
         "search:read.public",
         "users:read",
         "usergroups:read"
+      ],
+      "user_optional": [
+        "chat:write"
       ]
     },
     "pkce_enabled": true

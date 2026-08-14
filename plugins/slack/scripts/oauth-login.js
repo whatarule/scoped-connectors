@@ -19,7 +19,7 @@ const { postFormForJson } = require("./_shared/oauth/http");
 const AUTH_URI = "https://slack.com/oauth/v2_user/authorize";
 const TOKEN_URI = "https://slack.com/api/oauth.v2.user.access";
 const SLACK_API_URI = "https://slack.com/api/";
-const DEFAULT_CLIENT_ID = "6381386946.11798351065735";
+const DEFAULT_CLIENT_ID = "6381386946.11807045760195";
 const DEFAULT_REDIRECT_URI = "http://localhost:53682/slack/oauth/callback";
 const DEFAULT_ALLOWED_TEAM_IDS = ["T06B7BCTU"];
 const DEFAULT_CONFIG_PATH = path.join(
@@ -36,6 +36,8 @@ const READONLY_SCOPES = [
   "users:read",
   "usergroups:read",
 ];
+const OPTIONAL_SCOPES = ["chat:write"];
+const REQUESTED_SCOPES = [...READONLY_SCOPES, ...OPTIONAL_SCOPES];
 const USAGE = [
   "使い方: oauth-login.js [--config path] [--client-id <Slack Client ID>] [--redirect-uri URL]",
   "",
@@ -173,7 +175,7 @@ function buildAuthorizeUrl(options, pkce, state) {
   url.searchParams.set("client_id", options.clientId);
   url.searchParams.set("redirect_uri", options.redirectUri);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("scope", READONLY_SCOPES.join(","));
+  url.searchParams.set("scope", REQUESTED_SCOPES.join(","));
   url.searchParams.set("code_challenge", pkce.challenge);
   url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("state", state);
@@ -214,7 +216,7 @@ async function waitForAuthorization(options) {
 
   process.stdout.write(
     [
-      "次の URL をブラウザで開いて Slack の読み取り権限を許可してください:",
+      "次の URL をブラウザで開いて Slack の読み取り権限と投稿権限を許可してください:",
       authUrl.toString(),
       "",
     ].join("\n")
@@ -424,6 +426,8 @@ module.exports = {
   DEFAULT_ALLOWED_TEAM_IDS,
   DEFAULT_CONFIG_PATH,
   READONLY_SCOPES,
+  OPTIONAL_SCOPES,
+  REQUESTED_SCOPES,
   USAGE,
   loadConfigFile,
   applyDefaults,

@@ -9,6 +9,8 @@ const {
   DEFAULT_ALLOWED_TEAM_IDS,
   DEFAULT_CONFIG_PATH,
   READONLY_SCOPES,
+  OPTIONAL_SCOPES,
+  REQUESTED_SCOPES,
   normalizeTeamIds,
   applyDefaults,
   parseArgs,
@@ -196,7 +198,7 @@ describe("PKCE", () => {
 });
 
 describe("buildAuthorizeUrl", () => {
-  it("Slack user OAuth PKCE URL を生成する", () => {
+  it("Slack user OAuth PKCE URL で読み取り権限と投稿権限を要求する", () => {
     const url = buildAuthorizeUrl(
       { clientId: "123.456", redirectUri: DEFAULT_REDIRECT_URI },
       { challenge: "challenge" },
@@ -207,7 +209,9 @@ describe("buildAuthorizeUrl", () => {
     assert.equal(url.searchParams.get("client_id"), "123.456");
     assert.equal(url.searchParams.get("redirect_uri"), DEFAULT_REDIRECT_URI);
     assert.equal(url.searchParams.get("response_type"), "code");
-    assert.equal(url.searchParams.get("scope"), READONLY_SCOPES.join(","));
+    assert.deepEqual(OPTIONAL_SCOPES, ["chat:write"]);
+    assert.equal(url.searchParams.get("scope"), REQUESTED_SCOPES.join(","));
+    assert.match(url.searchParams.get("scope"), /(?:^|,)chat:write(?:,|$)/);
     assert.equal(url.searchParams.get("code_challenge"), "challenge");
     assert.equal(url.searchParams.get("code_challenge_method"), "S256");
     assert.equal(url.searchParams.get("state"), "state");
