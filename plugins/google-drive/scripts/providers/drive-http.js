@@ -13,16 +13,17 @@ const { describeTokenStore } = require("../auth/token-store");
 
 const DRIVE_API_BASE = "https://www.googleapis.com/drive/v3/";
 
-async function getAccessToken() {
-  const token = await getGoogleDriveAccessToken();
+async function getAccessToken(options = {}) {
+  const profile = options.profile || "default";
+  const token = await getGoogleDriveAccessToken({ profile });
   if (token) {
-    return { token, source: describeTokenStore() };
+    return { token, source: describeTokenStore({ profile }) };
   }
 
   throw new Error(
     [
       "Google Drive token が保存されていません。",
-      "google-drive-auth でログインして OS secure store に token を保存してください。",
+      `google-drive-auth login --profile ${profile} でログインして OS secure store に token を保存してください。`,
     ].join("\n")
   );
 }
@@ -85,7 +86,7 @@ function sleep(ms) {
 }
 
 async function requestDriveResponse(path, params, options, accept) {
-  const auth = options.auth || (await getAccessToken());
+  const auth = options.auth || (await getAccessToken({ profile: options.profile }));
   const url = buildDriveUrl(path, params);
   const maxRetries = options.maxRetries === undefined ? MAX_RETRIES : options.maxRetries;
   const retryBaseMs = options.retryBaseMs === undefined ? RETRY_BASE_MS : options.retryBaseMs;

@@ -3,7 +3,7 @@
 const path = require("node:path");
 
 const USAGE =
-  "使い方: read.js <fileId または Drive URL> [--format md|txt|csv|pdf] [--out dir] [--force]\n";
+  "使い方: read.js <fileId または Drive URL> [--profile name] [--format md|txt|csv|pdf] [--out dir] [--force]\n";
 const DEFAULT_OUT_DIR = path.join(process.cwd(), "drive-read");
 const MAX_MEDIA_BYTES = 50 * 1024 * 1024;
 
@@ -65,7 +65,7 @@ function resolveReadPlan(mimeType, format) {
 }
 
 function parseReadArgs(args) {
-  const options = { target: null, format: null, outDir: DEFAULT_OUT_DIR, force: false };
+  const options = { target: null, profile: "", format: null, outDir: DEFAULT_OUT_DIR, force: false };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -73,6 +73,10 @@ function parseReadArgs(args) {
       options.help = true;
     } else if (arg === "--force") {
       options.force = true;
+    } else if (arg === "--profile") {
+      const next = args[++i];
+      if (!next) throw new Error("--profile には profile 名を指定してください。");
+      options.profile = next;
     } else if (arg === "--format") {
       const next = args[++i];
       if (!next || !EXPORT_MIMES[next]) {

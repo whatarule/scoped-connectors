@@ -4,6 +4,7 @@ Google Drive のファイルを読み取り専用で参照するプラグイン�
 
 読み取り専用権限を使い、ファイルの作成・更新・削除は行いません。
 参照できるのは**許可したフォルダの配下のみ**です（設定ファイルでフォルダ ID を指定）。
+複数の Google Workspace アカウントは profile ごとに OAuth client、許可フォルダ、OS secure store の token を分離して同時利用できます。
 
 **[セットアップ手順](SETUP.md)**
 
@@ -16,15 +17,16 @@ Google Cloud 側の管理は [管理者向けセットアップ](ADMIN_SETUP.md)
 
 | コマンド | 説明 |
 |---|---|
-| `/google-drive-auth` または `/google-drive-auth login` | Drive / Activity / Labels の読み取り専用権限で OAuth token を取得し OS secure store に保存 |
-| `/google-drive-auth status` | 保存済み token の状態確認（about.get の live check 込み。token 値は表示しない） |
-| `/google-drive-auth clear` | OS secure store から保存済み token record を削除 |
-| `/google-drive-read <URL または fileId>` | 許可フォルダ配下のファイル内容を読む |
+| `/google-drive-auth login [--profile name]` | Drive / Activity / Labels の読み取り専用権限で OAuth token を profile 専用の OS secure store に保存 |
+| `/google-drive-auth status [--profile name]` | profile の token 状態確認（about.get の live check 込み。token 値は表示しない） |
+| `/google-drive-auth clear [--profile name]` | profile の token record を削除 |
+| `/google-drive-read <URL または fileId> [--profile name]` | profile の許可フォルダ配下にあるファイル内容を読む |
 
 自然言語でも利用できます。
 
 ```
 Drive認証状態を確認して
+SasaeL profile の Drive 認証状態を確認して
 このDriveのファイルを読んで https://docs.google.com/document/d/xxxx/edit
 ```
 
@@ -46,8 +48,8 @@ $google-drive Driveにつながるか確認して
 ## 参考: 認証
 
 このプラグインは共有の Google OAuth client_id を使い、client secret は login 時の対話入力で受け取って OS secure store にのみ保存します。
-token record は macOS Keychain または Windows Credential Manager に保存します。
-Windows native と WSL では同じ Windows Credential Manager target `scoped-connectors/google-drive/default` を使います。
+token record は profile ごとに macOS Keychain または Windows Credential Manager に保存します。
+保存先の account / target は `scoped-connectors/google-drive/<profile>` です。profile 未設定の従来構成は `default` を使います。
 file store と token 用環境変数は使いません。
 
 Google Cloud 側の管理は [管理者向けセットアップ](ADMIN_SETUP.md) に分けています。

@@ -50,6 +50,33 @@ chmod 600 ~/.config/drive-api/config.json
 > **注意**: 許可フォルダと allowedDomains は、このプラグインを使うときのガードレールです。
 > 詳細な権限境界は [管理者向けセットアップ](ADMIN_SETUP.md) を参照してください。
 
+### 複数アカウントを同時利用する場合
+
+アカウントごとに profile を作成します。`clientId` は各 Google Workspace で用意した Desktop app の OAuth client ID を指定します。client secret は設定ファイルへ書きません。
+
+```json
+{
+  "defaultProfile": "compass",
+  "profiles": {
+    "compass": {
+      "clientId": "COMPASS_CLIENT_ID.apps.googleusercontent.com",
+      "allowedDomains": ["compass-e.com"],
+      "allowedFolderIds": ["COMPASS_FOLDER_ID"]
+    },
+    "sasael": {
+      "clientId": "SASAEL_CLIENT_ID.apps.googleusercontent.com",
+      "allowedDomains": ["sasael.co.jp"],
+      "allowedFolderIds": ["SASAEL_FOLDER_ID"]
+    }
+  }
+}
+```
+
+- profile 名は英小文字・数字で始まる 1〜64 文字の英小文字・数字・`-`・`_` です。
+- `defaultProfile` は `--profile` を省略したときに使います。省略時は `default` です。
+- 従来のトップレベル `allowedFolderIds` 構成はそのまま利用でき、token store は `default` のままです。
+- profile 構成へ移行した既存ユーザーは、各 profile で一度ずつ再認証してください。既存の `default` token は自動コピーしません。
+
 ## 3. 認証
 
 このプラグインのスキル `/google-drive-auth` または `/google-drive-auth login` を実行します。
@@ -63,6 +90,13 @@ login は client secret の対話入力に TTY が必要なため、エージェ
 node <プラグインのインストールパス>/scripts/auth.js login
 ```
 
+複数 profile はそれぞれ認証します。
+
+```sh
+node <プラグインのインストールパス>/scripts/auth.js login --profile compass
+node <プラグインのインストールパス>/scripts/auth.js login --profile sasael
+```
+
 インストールパスを自分で確認する場合は `~/.claude/plugins/installed_plugins.json` の `installPath` を参照してください
 (このリポジトリを直接 checkout している場合は `node plugins/google-drive/scripts/auth.js login` で実行できます)。
 
@@ -72,16 +106,15 @@ node <プラグインのインストールパス>/scripts/auth.js login
 >
 > `00全社員共有` → `認証情報` → `drive-api` → `client secret`
 
-上記の値を入力してください。入力内容は表示されません。
+同梱の COMPASS 共有 client を使う場合は上記の値を入力してください。別 profile では、その profile の `clientId` に対応する client secret を入力します。入力内容は表示されません。
 続いて表示された URL をブラウザで開いて許可してください。
-token record は macOS Keychain または Windows Credential Manager に保存されます。
-Windows native と WSL では同じ Windows Credential Manager target `scoped-connectors/google-drive/default` を使います。
+token record は macOS Keychain または Windows Credential Manager の `scoped-connectors/google-drive/<profile>` に分離して保存されます。
 WSL では `wslpath` と `powershell.exe` が必要です。
 file store と token 用環境変数は使いません。
 access token の期限が切れても自動で refresh されます。
 
-token 保存前に `about.get` で取得したアカウントのメールドメインを許可ドメイン
-（既定: `compass-e.com`）と照合し、一致しない token は保存を拒否します。
+token 保存前に `about.get` で取得したアカウントのメールドメインを選択 profile の許可ドメイン
+（従来構成の既定: `compass-e.com`）と照合し、一致しない token は保存を拒否します。
 これは token 保存前のポリシー確認であり、Google Workspace の共有境界や管理者ポリシーそのものを保証するものではありません。
 Google の許可画面で拒否される場合は、管理者に確認してください。
 
@@ -137,6 +170,8 @@ Keychain / Credential Manager を使うコマンドは sandbox 外実行が必�
 
 `GOOGLE_DRIVE_CONFIG_PATH` 環境変数で変更できます。
 
+**profile** — CLI の `--profile`、`GOOGLE_DRIVE_PROFILE`、設定の `defaultProfile`、`default` の順に選択します。
+
 ## 参考: 状態確認・ログアウト
 
 以降のコマンド例はリポジトリを直接 checkout している場合のパスです。
@@ -145,6 +180,8 @@ Keychain / Credential Manager を使うコマンドは sandbox 外実行が必�
 ```sh
 node plugins/google-drive/scripts/auth.js status
 node plugins/google-drive/scripts/auth.js clear
+node plugins/google-drive/scripts/auth.js status --profile sasael
+node plugins/google-drive/scripts/auth.js clear --profile sasael
 ```
 
 `status` は保存状態と `about.get` の live check 結果を表示します。access token は表示しません。
@@ -158,6 +195,7 @@ node plugins/google-drive/scripts/auth.js clear
 
 ```sh
 node plugins/google-drive/scripts/smoke.js
+node plugins/google-drive/scripts/smoke.js --profile sasael
 ```
 
 token が未保存の場合は、先に `/google-drive-auth` でログインするか、`smoke.js --login` を指定します。
@@ -168,7 +206,7 @@ Google の許可画面はブラウザで手動承認してください。
 フォルダ許可リストの関所を通した実読み取りまで確認する場合だけ `--file` を指定します(バイト数のみ表示し、内容は出力しません)。
 
 ```sh
-node plugins/google-drive/scripts/smoke.js --file "https://docs.google.com/document/d/xxxx/edit"
+node plugins/google-drive/scripts/smoke.js --profile sasael --file "https://docs.google.com/document/d/xxxx/edit"
 ```
 
 Google token らしい文字列は出力時に伏せます。

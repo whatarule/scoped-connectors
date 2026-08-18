@@ -21,11 +21,30 @@ describe("Google Drive token-store wrapper", () => {
       "ACCOUNT",
       "WINDOWS_TARGET",
       "WINDOWS_HELPER",
+      "createProfileTokenStore",
       "describeTokenStore",
       "readTokenRecord",
       "writeTokenRecord",
       "deleteTokenRecord",
     ]);
+  });
+
+  it("profile ごとに独立した secure store account を使う", async () => {
+    const calls = [];
+    await tokenStore.writeTokenRecord(
+      { access_token: "ya29.sasael" },
+      {
+        profile: "sasael",
+        platform: "win32",
+        execFileWithInput: async (command, args, input) => {
+          calls.push({ command, args, input });
+          return { stdout: "" };
+        },
+      }
+    );
+    assert.equal(calls[0].args.at(-2), "scoped-connectors/google-drive/sasael");
+    assert.equal(calls[0].args.at(-1), "sasael");
+    assert.throws(() => tokenStore.createProfileTokenStore("../unsafe"), /profile/);
   });
 
   it("Google Drive 設定を vendored token-store に渡す", async () => {
