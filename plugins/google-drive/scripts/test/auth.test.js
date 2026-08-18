@@ -292,6 +292,32 @@ describe("getGoogleDriveAccessToken", () => {
     assert.equal(token, "ya29.old");
   });
 
+  it("profile を token store の読み書きへ渡す", async () => {
+    const reads = [];
+    const writes = [];
+    const token = await getGoogleDriveAccessToken({
+      profile: "sasael",
+      now: 9_500,
+      refreshWindowMs: 1_000,
+      readTokenRecord: async (options) => {
+        reads.push(options);
+        return BASE_RECORD;
+      },
+      writeTokenRecord: async (_record, options) => {
+        writes.push(options);
+      },
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { access_token: "ya29.new", expires_in: 3600, token_type: "Bearer" };
+        },
+      }),
+    });
+    assert.equal(token, "ya29.new");
+    assert.deepEqual(reads, [{ profile: "sasael" }]);
+    assert.deepEqual(writes, [{ profile: "sasael" }]);
+  });
+
   it("未対応 version の保存 record は access token 利用前に拒否する", async () => {
     await assert.rejects(
       () =>

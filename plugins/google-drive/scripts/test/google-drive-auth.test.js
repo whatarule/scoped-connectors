@@ -85,7 +85,7 @@ describe("getStatus", () => {
       })
     );
 
-    assert.deepEqual(status, { exists: false, store: STORE_DESCRIPTION });
+    assert.deepEqual(status, { exists: false, profile: "default", store: STORE_DESCRIPTION });
   });
 
   it("record があれば about.get で live check して最新 record を表示する", async () => {
@@ -180,8 +180,52 @@ describe("runAuth", () => {
     assert.doesNotMatch(output, /ya29\./);
   });
 
-  it("status に引数は指定できない", async () => {
-    await assert.rejects(() => runAuth(["status", "--json"]), /引数は指定できません/);
+  it("login は選択 profile を OAuth login へ渡して表示する", async () => {
+    const output = await runAuth(["login", "--profile", "sasael"], {
+      parseLoginArgs: () => ({ profile: "sasael" }),
+      oauthLogin: async (parsed) => {
+        assert.equal(parsed.profile, "sasael");
+        return {
+          profile: "sasael",
+          store: "store:sasael",
+          user: "SasaeL User",
+          email: "user@sasael.co.jp",
+          scope: "https://www.googleapis.com/auth/drive.readonly",
+        };
+      },
+    });
+    assert.match(output, /profile: sasael/);
+    assert.match(output, /email: user@sasael\.co\.jp/);
+  });
+
+  it("status の不明なオプションは拒否する", async () => {
+    await assert.rejects(() => runAuth(["status", "--json"]), /不明なオプション/);
+  });
+
+  it("status / clear は profile を token store へ渡す", async () => {
+    const statusCalls = [];
+    const statusOutput = await runAuth(["status", "--profile", "sasael"], {
+      parseProfileArgs: () => ({ profile: "sasael" }),
+      readTokenRecord: async (storeOptions) => {
+        statusCalls.push(storeOptions);
+        return null;
+      },
+      describeTokenStore: (storeOptions) => `store:${storeOptions.profile}`,
+    });
+    assert.deepEqual(statusCalls, [{ profile: "sasael" }]);
+    assert.match(statusOutput, /profile: sasael/);
+
+    const clearCalls = [];
+    const clearOutput = await runAuth(["clear", "--profile", "compass"], {
+      parseProfileArgs: () => ({ profile: "compass" }),
+      deleteTokenRecord: async (storeOptions) => {
+        clearCalls.push(storeOptions);
+        return { deleted: true };
+      },
+      describeTokenStore: (storeOptions) => `store:${storeOptions.profile}`,
+    });
+    assert.deepEqual(clearCalls, [{ profile: "compass" }]);
+    assert.match(clearOutput, /profile: compass/);
   });
 
   it("help は USAGE を返す", async () => {

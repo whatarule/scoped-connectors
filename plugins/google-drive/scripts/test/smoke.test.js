@@ -26,6 +26,7 @@ describe("parseArgs", () => {
   it("既定値を返す", () => {
     assert.deepEqual(parseArgs([]), {
       file: "",
+      profile: "",
       count: DEFAULT_COUNT,
       login: false,
       skipList: false,
@@ -38,12 +39,17 @@ describe("parseArgs", () => {
       parseArgs(["--file", "https://docs.google.com/document/d/abc123/edit", "--count", "2", "--login", "--skip-list"]),
       {
         file: "https://docs.google.com/document/d/abc123/edit",
+        profile: "",
         count: 2,
         login: true,
         skipList: true,
         help: false,
       }
     );
+  });
+
+  it("--profile を解析する", () => {
+    assert.equal(parseArgs(["--profile", "sasael"]).profile, "sasael");
   });
 
   it("count は smoke 用の上限を超えられない", () => {
@@ -91,8 +97,8 @@ describe("runSmoke", () => {
         calls.push({ fn: "verifyFileInAllowlist", fileId });
         return { allowed: true, reason: "" };
       },
-      fetchDriveApi: async (path, params = {}) => {
-        calls.push({ fn: "fetchDriveApi", path, params });
+      fetchDriveApi: async (path, params = {}, options = {}) => {
+        calls.push({ fn: "fetchDriveApi", path, params, options });
         if (path === "files") {
           return {
             data: {
@@ -135,6 +141,27 @@ describe("runSmoke", () => {
     assert.equal(listCall.path, "files");
     assert.equal(listCall.params.q, "'FOLDER1' in parents and trashed = false");
     assert.equal(listCall.params.pageSize, "2");
+  });
+
+  it("profile を status、allowlist、Drive API へ渡す", async () => {
+    const statusCalls = [];
+    const allowlistCalls = [];
+    const deps = createDeps({
+      getStatus: async (options) => {
+        statusCalls.push(options);
+        return { ...LIVE_STATUS, profile: options.profile };
+      },
+      loadAllowlist: (_configPath, options) => {
+        allowlistCalls.push(options);
+        return { profile: "sasael", allowedFolderIds: ["SASAEL1"] };
+      },
+    });
+    await runSmoke({ profile: "sasael", count: 1 }, deps);
+    const listCall = deps.calls.find((call) => call.fn === "fetchDriveApi");
+    assert.deepEqual(statusCalls, [{ profile: "sasael" }]);
+    assert.deepEqual(allowlistCalls, [{ profile: "sasael" }]);
+    assert.equal(listCall.path, "files");
+    assert.deepEqual(listCall.options, { profile: "sasael" });
   });
 
   it("--file 指定時は allowlist 検証を通して読み取り、内容は出力しない", async () => {

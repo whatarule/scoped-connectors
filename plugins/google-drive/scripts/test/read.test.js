@@ -313,6 +313,49 @@ test("readDriveFile: Sheets export は先頭シートのみ warning を返す", 
   assert.deepEqual(result.warnings, ["注: Sheets の export は先頭シートのみです。"]);
 });
 
+test("readDriveFile: 解決済み profile を allowlist と Drive client に渡す", async () => {
+  const calls = [];
+  const result = await readDriveFile({
+    target: "FILE123",
+    profile: "sasael",
+    format: null,
+    force: false,
+  }, {
+    getConfigPath: () => "/tmp/profile-config.json",
+    loadAllowlist: (configPath, options) => {
+      calls.push({ fn: "loadAllowlist", configPath, options });
+      return { profile: "sasael", allowedFolderIds: ["SASAEL1"] };
+    },
+    verifyFileInAllowlist: async () => ({ allowed: true, reason: "" }),
+    fetchDriveApi: async (_apiPath, _params, options) => {
+      calls.push({ fn: "fetchDriveApi", options });
+      return {
+        data: {
+          id: "FILE123",
+          name: "Doc",
+          mimeType: "application/vnd.google-apps.document",
+          size: "0",
+        },
+      };
+    },
+    fetchDriveApiRaw: async (_apiPath, _params, options) => {
+      calls.push({ fn: "fetchDriveApiRaw", options });
+      return { buffer: Buffer.from("# Doc\n") };
+    },
+  });
+
+  assert.equal(result.profile, "sasael");
+  assert.deepEqual(calls, [
+    {
+      fn: "loadAllowlist",
+      configPath: "/tmp/profile-config.json",
+      options: { profile: "sasael" },
+    },
+    { fn: "fetchDriveApi", options: { profile: "sasael" } },
+    { fn: "fetchDriveApiRaw", options: { profile: "sasael" } },
+  ]);
+});
+
 test("readDriveFile: Office バイナリは MIME type を保持して media download する", async () => {
   const mimeType =
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -370,9 +413,10 @@ test("readDriveFile: media がサイズ上限を超えたら --force なしで�
 
 // --- parseArgs ---
 
-test("parseArgs: target と オプションを解釈する", () => {
-  const options = parseArgs(["1AbC", "--format", "pdf", "--out", "/tmp/x", "--force"]);
+test("parseArgs: target と profile・オプションを解釈する", () => {
+  const options = parseArgs(["1AbC", "--profile", "sasael", "--format", "pdf", "--out", "/tmp/x", "--force"]);
   assert.equal(options.target, "1AbC");
+  assert.equal(options.profile, "sasael");
   assert.equal(options.format, "pdf");
   assert.equal(options.outDir, "/tmp/x");
   assert.equal(options.force, true);
@@ -380,6 +424,7 @@ test("parseArgs: target と オプションを解釈する", () => {
 
 test("parseArgs: 保存先の既定値はカレントディレクトリ配下", () => {
   const options = parseArgs(["1AbC"]);
+  assert.equal(options.profile, "");
   assert.equal(options.outDir, path.join(process.cwd(), "drive-read"));
 });
 

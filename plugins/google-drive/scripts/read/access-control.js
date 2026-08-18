@@ -12,9 +12,9 @@ const {
   verifyFileInAllowedFolders,
 } = require("./access-policy");
 
-function loadAllowlist(configPath = getConfigPath()) {
-  const { allowedFolderIds } = loadReadSettings(configPath);
-  return { allowedFolderIds };
+function loadAllowlist(configPath = getConfigPath(), options = {}) {
+  const { profile, allowedFolderIds } = loadReadSettings(configPath, options);
+  return { profile, allowedFolderIds };
 }
 
 async function verifyFileInAllowlist(fileId, { allowedFolderIds, fetchJson }) {

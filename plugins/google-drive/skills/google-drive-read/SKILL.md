@@ -2,7 +2,7 @@
 name: google-drive-read
 description: "許可フォルダ配下の Google Drive ファイルを読み取り専用で取得する。テキストは内容を返し、PDF・画像・Office・その他のバイナリは利用可能な既存 capability がある場合だけ内容まで確認する。保存できても読めない形式は、形式・内容未確認・保存先を明示する。Triggers on: /google-drive-read, 'DriveのURLを読んで', 'Driveのファイルの内容', 'このDriveファイルを読んで'"
 user-invocable: true
-arguments: "<fileId または Drive URL> [--format md|txt|csv|pdf] [--out dir] [--force]"
+arguments: "<fileId または Drive URL> [--profile name] [--format md|txt|csv|pdf] [--out dir] [--force]"
 allowed-tools:
   - Bash
   - Read
@@ -27,7 +27,10 @@ access token は出力しないでください。
 ```bash
 node /a/b/scripts/read.js "https://docs.google.com/document/d/xxxx/edit"
 node /a/b/scripts/read.js <fileId>
+node /a/b/scripts/read.js <fileId> --profile sasael
 ```
+
+複数 profile が設定され、ユーザーがアカウント名を明示した場合は対応する `--profile <name>` を必ず渡す。指定がなければ config の `defaultProfile` を使い、推測で別 profile を選ばない。
 
 ## 出力の扱い
 
@@ -71,7 +74,7 @@ node /a/b/scripts/read.js <fileId>
 
 ## 認証
 
-token は OS secure store（macOS Keychain または Windows Credential Manager、target `scoped-connectors/google-drive/default`）から読み取ります。file store と token 用環境変数は使いません。
+token は profile ごとの OS secure store（macOS Keychain または Windows Credential Manager、target `scoped-connectors/google-drive/<profile>`）から読み取ります。file store と token 用環境変数は使いません。
 未認証または scope 不足の場合は、`google-drive-auth` で読み取り専用 scope の token を取得してください。
 
 ## sandbox 外での実行

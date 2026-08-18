@@ -132,6 +132,7 @@ async function refreshTokenRecord(record, options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const writeRecord = options.writeTokenRecord || writeTokenRecord;
   const now = options.now ?? Date.now();
+  const tokenStoreOptions = options.tokenStoreOptions || (options.profile ? { profile: options.profile } : {});
   const body = buildRefreshBody(record);
 
   const { response, data } = await postFormForJson(TOKEN_URI, body, fetchImpl);
@@ -145,15 +146,16 @@ async function refreshTokenRecord(record, options = {}) {
 
   const refreshed = buildRefreshedTokenRecord(record, data, now);
   assertRequiredScopes(refreshed);
-  await writeRecord(refreshed);
+  await writeRecord(refreshed, tokenStoreOptions);
   return refreshed;
 }
 
 async function reloadFreshTokenAfterRefreshRace(previousRecord, options = {}) {
   const readRecord = options.readTokenRecord || readTokenRecord;
+  const tokenStoreOptions = options.tokenStoreOptions || (options.profile ? { profile: options.profile } : {});
   return reloadFreshTokenAfterRefreshRaceBase(previousRecord, {
     ...options,
-    readTokenRecord: readRecord,
+    readTokenRecord: () => readRecord(tokenStoreOptions),
   });
 }
 
@@ -161,7 +163,8 @@ async function getGoogleDriveAccessToken(options = {}) {
   const readRecord = options.readTokenRecord || readTokenRecord;
   const now = options.now ?? Date.now();
   const refreshWindowMs = options.refreshWindowMs ?? DEFAULT_REFRESH_WINDOW_MS;
-  const record = await readRecord();
+  const tokenStoreOptions = options.tokenStoreOptions || (options.profile ? { profile: options.profile } : {});
+  const record = await readRecord(tokenStoreOptions);
   if (!record || !record.access_token) return "";
   assertSupportedTokenRecordVersion(record);
   if (!record.expires_at && !record.refresh_token) {
