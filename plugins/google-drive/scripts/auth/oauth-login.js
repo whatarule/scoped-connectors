@@ -40,10 +40,11 @@ const DRIVE_ABOUT_URI = "https://www.googleapis.com/drive/v3/about";
 // client secret はディスク(config・JSON・環境変数)に置かず、login 時の対話入力で受け取って
 // Token Record として OS secure store にのみ保存する(refresh は record の値を使う)。
 const USAGE = [
-  "使い方: google-drive-auth login [--client-id id]",
+  "使い方: google-drive-auth login [--profile name] [--client-id id]",
   "",
   "Google OAuth PKCE でログインして token を OS secure store に保存します。",
   "既定では同梱の共有 client_id(compass-e.com の内部アプリ)を使います。",
+  "--profile で config.json の profiles.<name> と profile 専用 token store を選択します。",
   "client secret は login 時に対話入力で受け取ります(値は社内の秘密情報共有先から取得)。ファイルや環境変数には置きません。",
   `別 client を使う場合は ${DEFAULT_CONFIG_PATH} の clientId、${CLIENT_ID_ENV}、または --client-id で指定できます。`,
   `token 保存前にアカウントのメールドメインを allowedDomains と照合します(既定: ${DEFAULT_ALLOWED_DOMAINS.join(", ")})。`,
@@ -253,10 +254,15 @@ async function login(options) {
   const tokenResponse = await exchangeCodeForToken(client, authorization);
   validateGrantedScopes(tokenResponse);
   const verification = await verifyTokenAuthorization(options, tokenResponse);
-  const record = buildTokenRecord(client, tokenResponse, Date.now(), verification);
-  await writeTokenRecord(record);
+  const record = {
+    ...buildTokenRecord(client, tokenResponse, Date.now(), verification),
+    profile: options.profile,
+  };
+  const tokenStoreOptions = { profile: options.profile };
+  await writeTokenRecord(record, tokenStoreOptions);
   return {
-    store: describeTokenStore(),
+    profile: options.profile,
+    store: describeTokenStore(tokenStoreOptions),
     email: record.user_email,
     user: record.user_name || record.user_email,
     scope: record.scope,

@@ -19,16 +19,40 @@ function writeTempConfig(content) {
 
 test("loadAllowlist: 正常な config を読み込む", () => {
   const configPath = writeTempConfig('{ "allowedFolderIds": ["abc123", "DEF-456_x"] }');
-  assert.deepEqual(loadAllowlist(configPath), { allowedFolderIds: ["abc123", "DEF-456_x"] });
+  assert.deepEqual(loadAllowlist(configPath), {
+    profile: "default",
+    allowedFolderIds: ["abc123", "DEF-456_x"],
+  });
 });
 
 test("loadAllowlist: ファイルが無ければ空配列", () => {
-  assert.deepEqual(loadAllowlist("/nonexistent/config.json"), { allowedFolderIds: [] });
+  assert.deepEqual(loadAllowlist("/nonexistent/config.json"), {
+    profile: "default",
+    allowedFolderIds: [],
+  });
 });
 
 test("loadAllowlist: allowedFolderIds 未定義なら空配列", () => {
   const configPath = writeTempConfig("{}");
-  assert.deepEqual(loadAllowlist(configPath), { allowedFolderIds: [] });
+  assert.deepEqual(loadAllowlist(configPath), { profile: "default", allowedFolderIds: [] });
+});
+
+test("loadAllowlist: profile ごとの allowedFolderIds を選択する", () => {
+  const configPath = writeTempConfig(JSON.stringify({
+    defaultProfile: "compass",
+    profiles: {
+      compass: { allowedFolderIds: ["COMPASS1"] },
+      sasael: { allowedFolderIds: ["SASAEL1"] },
+    },
+  }));
+  assert.deepEqual(loadAllowlist(configPath, { profile: "sasael" }), {
+    profile: "sasael",
+    allowedFolderIds: ["SASAEL1"],
+  });
+  assert.deepEqual(loadAllowlist(configPath), {
+    profile: "compass",
+    allowedFolderIds: ["COMPASS1"],
+  });
 });
 
 test("loadAllowlist: JSON 破損は throw", () => {

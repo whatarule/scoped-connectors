@@ -12,6 +12,7 @@ const {
   describeTokenStore,
   readTokenRecord,
 } = require("./token-store");
+const { parseProfileArgs } = require("../settings/config");
 
 const LOGIN_OPTIONS_USAGE = LOGIN_USAGE.replace(
   "使い方: google-drive-auth login ",
@@ -24,6 +25,7 @@ const USAGE = [
   "引数なし、または login: Google OAuth PKCE でログインして token を OS secure store に保存します。",
   "status: 保存済み token record の有無を確認し、about.get で live 状態を確認します。token 値は表示しません。",
   "clear: OS secure store から保存済み Google Drive token record を削除します。",
+  "status / clear options: --profile <name>",
   "",
   "login options:",
   LOGIN_OPTIONS_USAGE.trimEnd(),
@@ -84,14 +86,19 @@ async function getStatus(options = {}) {
   const describeStore = options.describeTokenStore || describeTokenStore;
   const getAccessToken = options.getGoogleDriveAccessToken || getGoogleDriveAccessToken;
   const fetchAboutWithToken = options.fetchDriveAboutWithToken || fetchDriveAboutWithToken;
-  const tokenStoreOptions = options.tokenStoreOptions || {};
+  const tokenStoreOptions = options.tokenStoreOptions || (options.profile ? { profile: options.profile } : {});
+  const profile = options.profile || tokenStoreOptions.profile || "default";
   const storeDescription = describeStore(tokenStoreOptions);
   const record = await readRecord(tokenStoreOptions);
   if (!record) {
-    return { exists: false, store: storeDescription };
+    return { exists: false, profile, store: storeDescription };
   }
 
-  const accessToken = await getAccessToken(options.accessTokenOptions || {});
+  const accessToken = await getAccessToken({
+    ...(options.accessTokenOptions || {}),
+    profile,
+    tokenStoreOptions,
+  });
   if (!accessToken) {
     throw new Error(
       "Google Drive token record は保存されていますが access token を確認できません。google-drive-auth で再ログインしてください。"
@@ -99,15 +106,16 @@ async function getStatus(options = {}) {
   }
   const about = await fetchAboutWithToken(accessToken);
   const latestRecord = (await readRecord(tokenStoreOptions)) || record;
-  return applyLiveAbout(summarizeRecord(latestRecord, storeDescription), about);
+  return { profile, ...applyLiveAbout(summarizeRecord(latestRecord, storeDescription), about) };
 }
 
 function formatStatus(status) {
   if (!status.exists) {
-    return `Google Drive token は保存されていません。\nstore: ${status.store}\n`;
+    return `Google Drive token は保存されていません。\nprofile: ${status.profile || "default"}\nstore: ${status.store}\n`;
   }
   return [
     "Google Drive token は保存されています。",
+    `profile: ${status.profile || "default"}`,
     `store: ${status.store}`,
     status.liveCheck ? `live_check: ${status.liveCheck}` : "",
     `user: ${status.user}`,
@@ -121,11 +129,13 @@ function formatStatus(status) {
 async function clearToken(options = {}) {
   const deleteRecord = options.deleteTokenRecord || deleteTokenRecord;
   const describeStore = options.describeTokenStore || describeTokenStore;
-  const tokenStoreOptions = options.tokenStoreOptions || {};
+  const tokenStoreOptions = options.tokenStoreOptions || (options.profile ? { profile: options.profile } : {});
+  const profile = options.profile || tokenStoreOptions.profile || "default";
   const storeDescription = describeStore(tokenStoreOptions);
   const result = await deleteRecord(tokenStoreOptions);
   return {
     deleted: Boolean(result && result.deleted),
+    profile,
     store: storeDescription,
   };
 }
@@ -136,9 +146,9 @@ function formatClearResult(result) {
     "無効化するには https://myaccount.google.com/permissions からアクセス権を削除してください。",
   ].join("\n");
   if (result.deleted) {
-    return `Google Drive token record を OS secure store から削除しました。\nstore: ${result.store}\n${suffix}\n`;
+    return `Google Drive token record を OS secure store から削除しました。\nprofile: ${result.profile || "default"}\nstore: ${result.store}\n${suffix}\n`;
   }
-  return `Google Drive token record は保存されていませんでした。\nstore: ${result.store}\n${suffix}\n`;
+  return `Google Drive token record は保存されていませんでした。\nprofile: ${result.profile || "default"}\nstore: ${result.store}\n${suffix}\n`;
 }
 
 async function runLogin(args, options = {}) {
@@ -153,6 +163,7 @@ async function runLogin(args, options = {}) {
   const result = await login(parsed);
   return [
     "Google Drive token を保存しました。",
+    `profile: ${result.profile || parsed.profile || "default"}`,
     `store: ${result.store}`,
     `user: ${result.user}`,
     `email: ${result.email}`,
@@ -170,16 +181,12 @@ async function runAuth(args, options = {}) {
     return runLogin(parsed.rest, options);
   }
   if (parsed.command === "status") {
-    if (parsed.rest.length > 0) {
-      throw new Error("status に引数は指定できません。");
-    }
-    return formatStatus(await getStatus(options));
+    const profileOptions = (options.parseProfileArgs || parseProfileArgs)(parsed.rest);
+    return formatStatus(await getStatus({ ...options, profile: profileOptions.profile }));
   }
   if (parsed.command === "clear") {
-    if (parsed.rest.length > 0) {
-      throw new Error(`${parsed.command} に引数は指定できません。`);
-    }
-    return formatClearResult(await clearToken(options));
+    const profileOptions = (options.parseProfileArgs || parseProfileArgs)(parsed.rest);
+    return formatClearResult(await clearToken({ ...options, profile: profileOptions.profile }));
   }
   throw new Error(`未対応のサブコマンドです: ${parsed.command}`);
 }

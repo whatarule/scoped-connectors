@@ -42,6 +42,25 @@ Drive データを保存・転送する形で扱う場合は、Google の securi
 利用者は `client_id` を `~/.config/drive-api/config.json` の `clientId`、`GOOGLE_DRIVE_CLIENT_ID`、または `--client-id` で指定します。
 `client_secret` は通常構成と同じく login 時に対話入力し、ファイルや環境変数には置きません。
 
+複数の Google Workspace を同時利用する場合は、Workspace ごとに OAuth client を用意し、利用者の `config.json` の `profiles.<name>.clientId`、`allowedDomains`、`allowedFolderIds` を分離します。token と client secret は OS secure store の `scoped-connectors/google-drive/<profile>` に保存されるため、profile 間では共有されません。
+
+```json
+{
+  "profiles": {
+    "organization-a": {
+      "clientId": "CLIENT_A.apps.googleusercontent.com",
+      "allowedDomains": ["organization-a.example"],
+      "allowedFolderIds": ["FOLDER_A"]
+    },
+    "organization-b": {
+      "clientId": "CLIENT_B.apps.googleusercontent.com",
+      "allowedDomains": ["organization-b.example"],
+      "allowedFolderIds": ["FOLDER_B"]
+    }
+  }
+}
+```
+
 外部（External）かつ「テスト」ステータスの client では、refresh token が7日で失効する点に注意してください。
 
 ## `drive.readonly` を使う理由

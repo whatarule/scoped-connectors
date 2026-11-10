@@ -28,16 +28,24 @@ node /a/b/scripts/auth.js
 node /a/b/scripts/auth.js login
 ```
 
+profile を指定する場合:
+
+```bash
+node /a/b/scripts/auth.js login --profile sasael
+```
+
 状態確認:
 
 ```bash
 node /a/b/scripts/auth.js status
+node /a/b/scripts/auth.js status --profile sasael
 ```
 
 保存済み token record の削除:
 
 ```bash
 node /a/b/scripts/auth.js clear
+node /a/b/scripts/auth.js clear --profile sasael
 ```
 
 `clear` は Google 側の token revoke ではなく、OS secure store の保存 token record だけを削除します。
@@ -69,11 +77,11 @@ node /a/b/scripts/auth.js login
 ```
 
 （`/a/b` は実際のインストールパスに置き換える。相対パスや `plugins/...` 始まりのパスは利用者の環境では動かないので使わない）
-別 client を使う場合は config の `clientId`、`GOOGLE_DRIVE_CLIENT_ID`、または `--client-id` で指定する。
+複数 profile が設定され、ユーザーがアカウント名を明示した場合は対応する `--profile <name>` を必ず渡す。指定がなければ config の `defaultProfile` を使い、推測で別 profile を選ばない。
+別 client を使う場合は profile config の `clientId`、`GOOGLE_DRIVE_CLIENT_ID`、または `--client-id` で指定する。
 token 保存前に `about.get` のメールドメインを allowedDomains（既定: compass-e.com）と照合し、一致しない token は保存しない。
 allowedDomains は `~/.config/drive-api/config.json` または `GOOGLE_DRIVE_ALLOWED_DOMAINS` で上書きできる。
-token record は macOS Keychain または Windows Credential Manager に保存します。file store と token 用環境変数は使いません。
-Windows native と WSL では同じ Windows Credential Manager target `scoped-connectors/google-drive/default` を使います。
+token record は profile ごとに macOS Keychain または Windows Credential Manager の `scoped-connectors/google-drive/<profile>` に保存します。file store と token 用環境変数は使いません。
 
 ## 注意
 

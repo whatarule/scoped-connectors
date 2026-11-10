@@ -9,12 +9,13 @@ const DEFAULT_COUNT = 3;
 const MAX_COUNT = 10;
 
 const USAGE = [
-  "使い方: smoke.js [--file <URL|fileId>] [--count N] [--login] [--skip-list]",
+  "使い方: smoke.js [--profile name] [--file <URL|fileId>] [--count N] [--login] [--skip-list]",
   "",
   "実 OAuth client / OS secure store / Drive API の最小 smoke を実行します。",
   "既定ではファイルのメタデータだけを確認し、内容は取得・出力しません。",
   "",
   "options:",
+  "  --profile <name>      config.json の profile と profile 専用 token store を選択する",
   "  --file <URL|fileId>  フォルダ許可リストの関所を通した実読み取りまで確認する。内容は出力しない",
   `  --count N            list の確認件数。1-${MAX_COUNT}。既定: ${DEFAULT_COUNT}`,
   "  --login              token 未保存時に google-drive-auth login を開始する",
@@ -36,6 +37,7 @@ function parseCount(value) {
 function parseArgs(args) {
   const options = {
     file: "",
+    profile: "",
     count: DEFAULT_COUNT,
     login: false,
     skipList: false,
@@ -47,6 +49,9 @@ function parseArgs(args) {
     if (arg === "--file") {
       if (!args[i + 1]) throw new Error("--file には Drive の URL または fileId を指定してください。");
       options.file = args[++i];
+    } else if (arg === "--profile") {
+      if (!args[i + 1]) throw new Error("--profile には profile 名を指定してください。");
+      options.profile = args[++i];
     } else if (arg === "--count") {
       if (!args[i + 1]) throw new Error("--count には件数を指定してください。");
       options.count = parseCount(args[++i]);
@@ -77,15 +82,17 @@ function truncateText(text, maxLength = 120) {
 }
 
 async function ensureStoredToken(options, deps) {
-  let status = await deps.getStatus();
+  let status = await deps.getStatus({ profile: options.profile });
   if (status.exists) return { status, loginStarted: false };
 
   if (!options.login) {
     throw new Error("Google Drive token は保存されていません。先に google-drive-auth でログインするか、smoke.js --login を実行してください。");
   }
 
-  await deps.runAuth(["login"]);
-  status = await deps.getStatus();
+  const loginArgs = ["login"];
+  if (options.profile) loginArgs.push("--profile", options.profile);
+  await deps.runAuth(loginArgs);
+  status = await deps.getStatus({ profile: options.profile });
   if (!status.exists) {
     throw new Error("google-drive-auth login 後も Google Drive token record を確認できませんでした。");
   }
@@ -123,7 +130,11 @@ async function runSmoke(options = {}, deps = {}) {
   };
 
   const steps = [];
-  const { status, loginStarted } = await ensureStoredToken(smokeOptions, smokeDeps);
+  const { profile, allowedFolderIds } = smokeDeps.loadAllowlist(undefined, {
+    profile: smokeOptions.profile,
+  });
+  const resolvedOptions = { ...smokeOptions, profile: profile || smokeOptions.profile || "default" };
+  const { status, loginStarted } = await ensureStoredToken(resolvedOptions, smokeDeps);
   if (loginStarted) {
     steps.push({ name: "login", ok: true });
   }
@@ -140,7 +151,6 @@ async function runSmoke(options = {}, deps = {}) {
 
   steps.push(buildAboutStep(status));
 
-  const { allowedFolderIds } = smokeDeps.loadAllowlist();
   if (!allowedFolderIds.length) {
     throw new Error("フォルダ許可リストが設定されていません。SETUP.md の allowedFolderIds を設定してください。");
   }
@@ -148,13 +158,17 @@ async function runSmoke(options = {}, deps = {}) {
 
   if (!smokeOptions.skipList) {
     const folderId = allowedFolderIds[0];
-    const list = await smokeDeps.fetchDriveApi("files", {
-      q: `'${folderId}' in parents and trashed = false`,
-      pageSize: String(smokeOptions.count),
-      fields: "files(id,name,mimeType)",
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
+    const list = await smokeDeps.fetchDriveApi(
+      "files",
+      {
+        q: `'${folderId}' in parents and trashed = false`,
+        pageSize: String(resolvedOptions.count),
+        fields: "files(id,name,mimeType)",
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      },
+      { profile: resolvedOptions.profile }
+    );
     const files = (list.data && list.data.files) || [];
     steps.push({
       name: "list",
@@ -169,11 +183,11 @@ async function runSmoke(options = {}, deps = {}) {
     });
   }
 
-  if (smokeOptions.file) {
+  if (resolvedOptions.file) {
     const result = await smokeDeps.readDriveFile(
-      { target: smokeOptions.file, format: null, force: true },
+      { target: resolvedOptions.file, profile: resolvedOptions.profile, format: null, force: true },
       {
-        loadAllowlist: () => ({ allowedFolderIds }),
+        loadAllowlist: () => ({ profile, allowedFolderIds }),
         verifyFileInAllowlist: smokeDeps.verifyFileInAllowlist,
         fetchDriveApi: smokeDeps.fetchDriveApi,
         fetchDriveApiRaw: smokeDeps.fetchDriveApiRaw,

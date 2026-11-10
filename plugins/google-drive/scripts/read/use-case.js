@@ -64,10 +64,6 @@ function buildMissingAllowlistError(configPath) {
 }
 
 async function readDriveFile(options, deps = {}) {
-  const driveClient = deps.driveClient || defaultDriveClient.createDriveClient({
-    fetchDriveApi: deps.fetchDriveApi,
-    fetchDriveApiRaw: deps.fetchDriveApiRaw,
-  });
   const getConfigPathImpl = deps.getConfigPath || getConfigPath;
   const loadAllowlistImpl = deps.loadAllowlist || loadAllowlist;
   const verifyFileInAllowlistImpl = deps.verifyFileInAllowlist || verifyFileInAllowlist;
@@ -77,10 +73,19 @@ async function readDriveFile(options, deps = {}) {
     throw new Error("フォルダの URL が指定されました。フォルダの一覧表示は未対応です。ファイルの URL を指定してください。");
   }
 
-  const { allowedFolderIds } = loadAllowlistImpl();
+  const configPath = getConfigPathImpl();
+  const { profile, allowedFolderIds } = loadAllowlistImpl(configPath, {
+    profile: options.profile,
+  });
   if (!allowedFolderIds.length) {
-    throw buildMissingAllowlistError(getConfigPathImpl());
+    throw buildMissingAllowlistError(configPath);
   }
+
+  const driveClient = deps.driveClient || defaultDriveClient.createDriveClient({
+    fetchDriveApi: deps.fetchDriveApi,
+    fetchDriveApiRaw: deps.fetchDriveApiRaw,
+    profile,
+  });
 
   const fetchJson = (apiPath, params) => driveClient.fetchJson(apiPath, params);
   const verdict = await verifyFileInAllowlistImpl(fileId, { allowedFolderIds, fetchJson });
@@ -111,6 +116,7 @@ async function readDriveFile(options, deps = {}) {
 
   return {
     fileId,
+    profile: profile || options.profile || "default",
     meta,
     plan,
     buffer,
